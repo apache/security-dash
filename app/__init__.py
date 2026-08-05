@@ -213,6 +213,20 @@ def _setup_security_headers(quart_app: asfquart.base.QuartApp) -> None:
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response
 
+def _configure_oauth_server(app_config: AppConfig) -> None:
+    """Point asfquart's OAuth flow at the configured OIDC server."""
+    import asfquart.generics
+    asfquart.generics.OAUTH_URL_INIT = (
+        f"{app_config.oauth_url_init}?state=%s&redirect_uri=%s"
+    )
+    asfquart.generics.OAUTH_URL_CALLBACK = app_config.oauth_url_callback
+    asfquart.generics.OAUTH_ENFORCE_HTTPS = app_config.oauth_enforce_https
+    asfquart.generics.OAUTH_CLIENT_ID = app_config.oauth_client_id
+    asfquart.generics.OAUTH_CLIENT_SECRET = app_config.oauth_client_secret
+    asfquart.generics.OAUTH_URL_JWKS = app_config.oauth_url_jwks
+    asfquart.generics.OAUTH_URL_LOGOUT = app_config.oauth_url_logout
+    asfquart.generics.OAUTH_ISSUER = app_config.oauth_issuer
+
 def create_app(test_environment: bool = False) -> asfquart.base.QuartApp:
     from app import config
     app_dir = None
@@ -232,6 +246,8 @@ def create_app(test_environment: bool = False) -> asfquart.base.QuartApp:
         token_file = None
 
     quart_app = asfquart.construct("security-dashboard", app_dir, cfg_file, token_file)
+
+    _configure_oauth_server(app_config)
 
     config.setup_app_config(quart_app, app_config)
 

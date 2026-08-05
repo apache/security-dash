@@ -56,6 +56,21 @@ class AppConfig(pydantic.BaseModel):
     pmcs_in_attic: list[str] = []
     """PMCs retired to the Attic, whose reports the security team handles directly"""
 
+    oauth_url_init: str = "https://oauth.apache.org/auth-oidc"
+    """URL of the ASF OIDC/OAuth server."""
+
+    oauth_url_callback: str = "https://oauth.apache.org/token-oidc"
+    """URL of the ASF OIDC/OAuth server token endpoint."""
+
+    oauth_url_jwks: str = None;
+    oauth_url_logout: str = None;
+    oauth_client_id: str = None;
+    oauth_client_secret: str = None;
+    oauth_issuer: str = None;
+
+    oauth_enforce_https: bool = True
+    """enforce HTTPS in the callback to the relying party."""
+
     server: ServerConfig = ServerConfig()
 
     @property
