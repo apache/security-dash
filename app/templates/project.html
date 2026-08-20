@@ -58,17 +58,21 @@ If you see anything that seems incorrect, email
             {%- endif -%}
           </td>
           <td class="reports-cves">
-            {%- for cve in report.cves -%}
-              <div><a href="https://cveprocess.apache.org/cve5/{{cve}}">{{ cve }}</a></div>
-            {%- endfor -%}
-            {%- if report.state == 'confirmed' and not report.cves -%}
-              <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}">allocate CVE</a></div>
-            {%- endif -%}
-          </td>
-          <td class="reports-reporter">
+  {%- for cve in report.cves -%}
+    <div><a href="https://cveprocess.apache.org/cve5/{{cve}}">{{ cve }}</a></div>
+  {%- endfor -%}
+  {%- if report.state == 'confirmed' and not report.cves -%}
+    {%- if is_unreleased -%}
+      <span class="text-muted" title="This project is not released and does not require CVEs. Credit reporter in commit messages or project acknowledgments.">no CVE required</span>
+    {%- else -%}
+      <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}">allocate CVE</a></div>
+    {%- endif -%}
+  {%- endif -%}
+</td>
+          <td class="reports-reporter ">
             {% if report.reporter %}
               <span class="reporter-initials"
-                    style="background-color: {{ report.reporter.color }};"
+                    style="background-color: {{ report.reporter.color }}"
                     title="{{ report.reporter.tooltip }}">{{ report.reporter.initials }}</span>
             {% endif %}
           </td>
