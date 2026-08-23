@@ -38,7 +38,7 @@ class AppConfig(pydantic.BaseModel):
     state_dir: str
     """Local persistent data"""
 
-    old_cve_close_dates: dict[str, date]
+    old_cve_close_dates: dict[str, date] = {}
     """Some manual exceptions from before we had vulnogram, to prevent them from getting necromanced in the stats"""
 
     pmcs_with_security_emails: list[str] = []
@@ -53,6 +53,9 @@ class AppConfig(pydantic.BaseModel):
     pmcs_with_subprojects: list[str] = []
     """PMCs whose reports are split across subprojects."""
 
+    pmcs_without_releases: list[str] = []
+    """PMCs that do not publish software releases and therefore do not issue CVEs."""
+    
     server: ServerConfig = ServerConfig()
 
     @property

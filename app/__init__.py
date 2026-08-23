@@ -166,7 +166,8 @@ async def project(project: str):
         project_name=project,
         debt_constant=statistics.DEBT_CONSTANT,
         sections=sections,
-        show_subproject=project in config.get().pmcs_with_subprojects)
+        show_subproject=project in config.get().pmcs_with_subprojects,
+        is_unreleased=project in config.get().unreleased_pmcs)
 
 @CLIENT.route("/api/project/<project>/reports")
 async def project_reports_api(project: str):
