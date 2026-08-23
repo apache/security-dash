@@ -53,7 +53,7 @@ class AppConfig(pydantic.BaseModel):
     pmcs_with_subprojects: list[str] = []
     """PMCs whose reports are split across subprojects."""
 
-    unreleased_pmcs: list[str] = []
+    pmcs_without_releases: list[str] = []
     """PMCs that do not publish software releases and therefore do not issue CVEs."""
     
     server: ServerConfig = ServerConfig()
