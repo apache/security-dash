@@ -56,10 +56,10 @@ def test_subproject_none_when_no_prefix(tmp_path, monkeypatch):
     assert report.subproject is None
 
 
-def _full_config(tmp_path, attic_pmcs=()):
+def _full_config(tmp_path, pmcs_in_attic=()):
     return types.SimpleNamespace(
         data_dir_path=tmp_path,
-        attic_pmcs=list(attic_pmcs),
+        pmcs_in_attic=list(pmcs_in_attic),
         pmcs_using_jira={},
         pmcs_using_github={},
     )
@@ -67,7 +67,7 @@ def _full_config(tmp_path, attic_pmcs=()):
 
 def test_security_pmc_includes_attic_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: _full_config(tmp_path, attic_pmcs=["hivemind"])
+        reports.config, "get", lambda: _full_config(tmp_path, pmcs_in_attic=["hivemind"])
     )
     (tmp_path / "security").mkdir()
     (tmp_path / "hivemind").mkdir()
@@ -84,7 +84,7 @@ def test_security_pmc_includes_attic_reports(tmp_path, monkeypatch):
 
 def test_ordinary_pmc_does_not_include_attic_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: _full_config(tmp_path, attic_pmcs=["hivemind"])
+        reports.config, "get", lambda: _full_config(tmp_path, pmcs_in_attic=["hivemind"])
     )
     (tmp_path / "cassandra").mkdir()
     (tmp_path / "hivemind").mkdir()
@@ -100,7 +100,7 @@ def test_security_pmc_tolerates_missing_and_invalid_attic_dirs(tmp_path, monkeyp
     monkeypatch.setattr(
         reports.config,
         "get",
-        lambda: _full_config(tmp_path, attic_pmcs=["hivemind", "../escape"]),
+        lambda: _full_config(tmp_path, pmcs_in_attic=["hivemind", "../escape"]),
     )
     (tmp_path / "security").mkdir()
     _write_report(tmp_path / "security" / "x", "own report.json")

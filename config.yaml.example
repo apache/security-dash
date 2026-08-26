@@ -10,7 +10,7 @@ pmcs_with_subprojects:
   - commons
 # Retired PMCs whose reports the security team handles directly;
 # committee ids from https://projects.apache.org/json/foundation/committees-retired.json
-attic_pmcs:
+pmcs_in_attic:
   - abdera
   - ace
   - any23

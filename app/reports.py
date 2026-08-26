@@ -224,7 +224,7 @@ async def load_pmc_reports(pmc: str) -> list[Report]:
     # attic projects no longer have a PMC, so the security team
     # handles their reports directly
     if pmc == "security":
-        for attic_pmc in config.get().attic_pmcs:
+        for attic_pmc in config.get().pmcs_in_attic:
             if not re.fullmatch(r"[a-z0-9]+", attic_pmc):
                 continue
             result.extend(
