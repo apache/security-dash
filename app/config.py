@@ -53,6 +53,9 @@ class AppConfig(pydantic.BaseModel):
     pmcs_with_subprojects: list[str] = []
     """PMCs whose reports are split across subprojects."""
 
+    attic_pmcs: list[str] = []
+    """PMCs retired to the Attic, whose reports the security team handles directly"""
+
     server: ServerConfig = ServerConfig()
 
     @property

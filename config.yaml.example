@@ -8,3 +8,6 @@ pmcs_with_security_emails:
   - ambari
 pmcs_with_subprojects:
   - commons
+attic_pmcs:
+  - hivemind
+  - shale

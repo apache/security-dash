@@ -1,8 +1,9 @@
+import asyncio
 import json
 import types
 
 from app import reports
-from app.reports import Reporter, _asf_member_link, _project_link, _reporter, load_pmc_report
+from app.reports import Reporter, _asf_member_link, _project_link, _reporter, load_pmc_report, load_pmc_reports
 
 
 def _write_report(path, label, *, subj="[SECURITY] a flaw"):
@@ -53,6 +54,60 @@ def test_subproject_none_when_no_prefix(tmp_path, monkeypatch):
     path = _write_report(tmp_path, "single.json")
     report = load_pmc_report("commons", path)
     assert report.subproject is None
+
+
+def _full_config(tmp_path, attic_pmcs=()):
+    return types.SimpleNamespace(
+        data_dir_path=tmp_path,
+        attic_pmcs=list(attic_pmcs),
+        pmcs_using_jira={},
+        pmcs_using_github={},
+    )
+
+
+def test_security_pmc_includes_attic_reports(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path, attic_pmcs=["hivemind"])
+    )
+    (tmp_path / "security").mkdir()
+    (tmp_path / "hivemind").mkdir()
+    _write_report(tmp_path / "security" / "x", "own report.json")
+    _write_report(tmp_path / "hivemind" / "x", "attic report.json")
+
+    result = asyncio.run(load_pmc_reports("security"))
+
+    assert {r.security_team_name for r in result} == {"own report.json", "attic report.json"}
+    by_name = {r.security_team_name: r for r in result}
+    assert by_name["attic report.json"].subproject == "hivemind"
+    assert by_name["own report.json"].subproject is None
+
+
+def test_ordinary_pmc_does_not_include_attic_reports(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path, attic_pmcs=["hivemind"])
+    )
+    (tmp_path / "cassandra").mkdir()
+    (tmp_path / "hivemind").mkdir()
+    _write_report(tmp_path / "cassandra" / "x", "own report.json")
+    _write_report(tmp_path / "hivemind" / "x", "attic report.json")
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert {r.security_team_name for r in result} == {"own report.json"}
+
+
+def test_security_pmc_tolerates_missing_and_invalid_attic_dirs(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config,
+        "get",
+        lambda: _full_config(tmp_path, attic_pmcs=["hivemind", "../escape"]),
+    )
+    (tmp_path / "security").mkdir()
+    _write_report(tmp_path / "security" / "x", "own report.json")
+
+    result = asyncio.run(load_pmc_reports("security"))
+
+    assert {r.security_team_name for r in result} == {"own report.json"}
 
 
 def test_asf_member_link_non_apache_to_uses_security_apache_org():
