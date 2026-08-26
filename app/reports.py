@@ -210,11 +210,25 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
         datetime.datetime.fromtimestamp(first_email['mailtime'], tz=datetime.timezone.utc),
     )
 
-async def load_pmc_reports(pmc: str) -> list[Report]:
-    if not re.fullmatch(r"[a-z0-9]+", pmc):
-        raise ValueError(f"invalid PMC name: {pmc!r}")
-
+def _load_reports_dir(pmc: str) -> list[Report]:
     d = config.get().data_dir_path / pmc
     threads = list(d.glob('**/*.json'))
 
     return [ r for r in (load_pmc_report(pmc, t) for t in threads) if r is not None ]
+
+async def load_pmc_reports(pmc: str) -> list[Report]:
+    if not re.fullmatch(r"[a-z0-9]+", pmc):
+        raise ValueError(f"invalid PMC name: {pmc!r}")
+
+    result = _load_reports_dir(pmc)
+    # attic projects no longer have a PMC, so the security team
+    # handles their reports directly
+    if pmc == "security":
+        for attic_pmc in config.get().pmcs_in_attic:
+            if not re.fullmatch(r"[a-z0-9]+", attic_pmc):
+                continue
+            result.extend(
+                dataclasses.replace(r, subproject=attic_pmc)
+                for r in _load_reports_dir(attic_pmc)
+            )
+    return result
