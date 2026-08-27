@@ -223,7 +223,6 @@ def _configure_oauth_server(app_config: AppConfig) -> None:
     asfquart.generics.OAUTH_ENFORCE_HTTPS = app_config.oauth_enforce_https
     asfquart.generics.OAUTH_CLIENT_ID = app_config.oauth_client_id
     asfquart.generics.OAUTH_CLIENT_SECRET = app_config.oauth_client_secret
-    asfquart.generics.OAUTH_URL_JWKS = app_config.oauth_url_jwks
     asfquart.generics.OAUTH_URL_LOGOUT = app_config.oauth_url_logout
     asfquart.generics.OAUTH_ISSUER = app_config.oauth_issuer
 

@@ -62,7 +62,6 @@ class AppConfig(pydantic.BaseModel):
     oauth_url_callback: str = "https://oauth.apache.org/token-oidc"
     """URL of the ASF OIDC/OAuth server token endpoint."""
 
-    oauth_url_jwks: str = None;
     oauth_url_logout: str = None;
     oauth_client_id: str = None;
     oauth_client_secret: str = None;
