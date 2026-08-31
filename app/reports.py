@@ -68,11 +68,10 @@ class Report:
     jira: str
     """If this project tracks security issues in private jira issues, the Jira ID"""
     title: str
-    asf_member_link: str
-    """link to the first email in the thread. this might only be
-       available to ASF members. make-report.py does something
-       smarter to give a link that's likely to also be accessible
-       by PMC members that are not ASF members."""
+    messageid: str
+    """message_id of the first email in the thread."""
+    listid: str
+    """list id of the first email in the thread."""
     link: str
     """link to the email archive for project members who may not
        necessarily be ASF members."""
@@ -95,6 +94,10 @@ class Report:
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return cleaned[:200]
 
+    @property
+    def asf_member_link(self) -> str:
+        return _ponymail_link(self.messageid, self.listid)
+
 def _known_bad_address(time, address):
     mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
     spark_retirement = datetime.date.fromisoformat("2026-02-16")
@@ -113,20 +116,16 @@ def _apache_list_address(email):
             return address
     return None
 
-def _asf_member_link(email):
-    apache_list_address = _apache_list_address(email)
-    if apache_list_address:
-        listid = apache_list_address.replace('@', '.')
-    else:
-        listid = 'security.apache.org'
-    messageid = email['message_id'].replace(' ', '+').replace('+', '%2B').replace('=', '%3D').replace('@', '%40')
-    return f"https://lists.apache.org/thread/{messageid}?<{listid}>"
+def _ponymail_link(messageid, listid):
+    partly_encoded_messageid = messageid.replace(' ', '+').replace('+', '%2B').replace('=', '%3D').replace('@', '%40')
+    return f"https://lists.apache.org/thread/{partly_encoded_messageid}?<{listid}>"
 
 def _project_link(emails):
     for email in emails[:5]:
-        if _apache_list_address(email):
-            return _asf_member_link(email)
-    return None
+        list_addr = _apache_list_address(email)
+        if list_addr:
+            return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
+    return _ponymail_link(emails[0]['message_id'], "security.apache.org")
 
 def _reporter(email) -> Reporter | None:
     addresses = [a for a in getaddresses([email.get('from', '')]) if a[1]]
@@ -196,14 +195,21 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     elif title.startswith("[Security] "):
         title = title.removeprefix("[Security] ")
 
+    apache_list_address = _apache_list_address(first_email)
+    if apache_list_address:
+        listid = apache_list_address.replace('@', '.')
+    else:
+        listid = 'security.apache.org'
+
     return Report(
         path.name,
         cves,
         github,
         jira,
         title,
-        _asf_member_link(first_email),
-        _project_link(emails) or _asf_member_link(first_email),
+        first_email['message_id'],
+        listid,
+        _project_link(emails),
         _reporter(first_email),
         state,
         subproject,
