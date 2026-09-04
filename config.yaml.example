@@ -106,3 +106,20 @@ pmcs_in_attic:
   - wink
   - wookie
   - xmlbeans
+
+# for local testing with mock-oauth2-server
+#oauth_url_init: http://localhost:8080/default/authorize
+#oauth_client_id: example-app
+#oauth_client_secret: ZXhhbXBsZS1hcHAtc2VjcmV0
+#oauth_url_callback: http://localhost:8080/default/token
+#oauth_issuer: http://localhost:8080/default
+#oauth_enforce_https: false
+
+# for local testing with https://mfa-dev.apache.org
+oauth_url_init: https://mfa-dev.apache.org/application/o/authorize/
+oauth_client_id: local_testing.apache.org
+oauth_client_secret: (ask)
+oauth_url_callback: https://mfa-dev.apache.org/application/o/token/
+oauth_url_logout: https://mfa-dev.apache.org/application/o/local_testing-apache-org/end-session/
+oauth_issuer: https://mfa-dev.apache.org/application/o/local_testing-apache-org/
+oauth_enforce_https: false
