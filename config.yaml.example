@@ -1,0 +1,8 @@
+dev_mode: true
+data_dir: /path/to/security-report-meta
+state_dir: ./state
+pmc_list_names:
+  webservices: ws
+pmcs_with_security_emails:
+  - airflow
+  - ambari

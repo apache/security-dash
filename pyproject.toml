@@ -1,0 +1,13 @@
+[project]
+name = "security-dashboard-backend-api"
+version = "0.1.0"
+license = "Apache-2.0"
+
+dependencies = [
+  "aiosmtplib",
+  "asfpy",
+  "asfquart",
+  "hypercorn",
+  "pydantic~=2.11",
+  "quart-schema[pydantic]~=0.21",
+]
