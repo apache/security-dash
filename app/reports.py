@@ -181,7 +181,7 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
     subproject = m.group(1) if m else None
 
     if not emails:
-        print(f"Empty label: {path.name}")
+        print(f"Empty label: {name}")
         return None
 
     first_email = emails[0]
