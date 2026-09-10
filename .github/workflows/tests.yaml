@@ -1,0 +1,25 @@
+name: "Unit tests"
+
+on:
+  push:
+    branches: [frontend]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [frontend]
+ 
+permissions: {}
+
+jobs:
+  unittests:
+    name: "Run unit tests"
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+
+    - name: Run tests
+      run: uv sync --extra test --python 3.14 && uv run pytest
