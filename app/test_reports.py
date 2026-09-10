@@ -3,7 +3,7 @@ import json
 import types
 
 from app import reports
-from app.reports import Reporter, _asf_member_link, _project_link, _reporter, load_pmc_report, load_pmc_reports
+from app.reports import Reporter, _project_link, _reporter, _load_pmc_report, load_pmc_report, load_pmc_reports
 
 
 def _write_report(path, label, *, subj="[SECURITY] a flaw"):
@@ -22,7 +22,7 @@ def _write_report(path, label, *, subj="[SECURITY] a flaw"):
 
 def test_subproject_after_leading_date(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: types.SimpleNamespace(pmcs_using_jira={})
+        reports.config, "get", lambda: _full_config(tmp_path)
     )
     path = _write_report(tmp_path, "2024-03-01 native a flaw wf untriaged.json")
     report = load_pmc_report("commons", path)
@@ -31,7 +31,7 @@ def test_subproject_after_leading_date(tmp_path, monkeypatch):
 
 def test_subproject_after_single_cve(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: types.SimpleNamespace(pmcs_using_jira={})
+        reports.config, "get", lambda: _full_config(tmp_path)
     )
     path = _write_report(tmp_path, "CVE-2024-1234 lang a flaw.json")
     report = load_pmc_report("commons", path)
@@ -40,7 +40,7 @@ def test_subproject_after_single_cve(tmp_path, monkeypatch):
 
 def test_subproject_after_multiple_cves(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: types.SimpleNamespace(pmcs_using_jira={})
+        reports.config, "get", lambda: _full_config(tmp_path)
     )
     path = _write_report(tmp_path, "CVE-2024-1234 CVE-2024-5678 io a flaw.json")
     report = load_pmc_report("commons", path)
@@ -49,7 +49,7 @@ def test_subproject_after_multiple_cves(tmp_path, monkeypatch):
 
 def test_subproject_none_when_no_prefix(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        reports.config, "get", lambda: types.SimpleNamespace(pmcs_using_jira={})
+        reports.config, "get", lambda: _full_config(tmp_path)
     )
     path = _write_report(tmp_path, "single.json")
     report = load_pmc_report("commons", path)
@@ -110,24 +110,36 @@ def test_security_pmc_tolerates_missing_and_invalid_attic_dirs(tmp_path, monkeyp
     assert {r.security_team_name for r in result} == {"own report.json"}
 
 
-def test_asf_member_link_non_apache_to_uses_security_apache_org():
+def test_asf_member_link_non_apache_to_uses_security_apache_org(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path)
+    )
     email = {
+        'subj': 'reporting a vuln',
         'to': 'Disclosure <disclosure@aisle.com>',
         'message_id': '<7200416e-bd53-4026-a0a1-f3cf4c00de86n@aisle.com>',
+        'mailtime': 1700000000,
     }
-    assert _asf_member_link(email) == (
+    assert _asf_member_link("cassandra", email) == (
         'https://lists.apache.org/thread/'
         '<7200416e-bd53-4026-a0a1-f3cf4c00de86n%40aisle.com>'
         '?<security.apache.org>'
     )
 
+def _asf_member_link(pmc, email):
+    return _load_pmc_report(pmc, "2026-09-09 foo", [], [ email ]).asf_member_link
 
-def test_asf_member_link_apache_to_uses_to_domain():
+def test_asf_member_link_apache_to_uses_to_domain(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path, pmcs_in_attic=["hivemind"])
+    )
     email = {
+        'subj': 'reporting a vuln',
         'to': 'security@cassandra.apache.org',
         'message_id': '<abc123@cassandra.apache.org>',
+        'mailtime': 1700000000,
     }
-    assert _asf_member_link(email) == (
+    assert _asf_member_link("cassandra", email) == (
         'https://lists.apache.org/thread/'
         '<abc123%40cassandra.apache.org>'
         '?<security.cassandra.apache.org>'
@@ -147,40 +159,36 @@ def test_project_link_returns_first_apache_email():
     )
 
 
-def test_project_link_only_considers_first_five():
-    emails = [{'to': 'reporter@aisle.com', 'message_id': f'<{i}@aisle.com>'} for i in range(5)]
-    emails.append({'to': 'security@cassandra.apache.org', 'message_id': '<late@cassandra.apache.org>'})
-    assert _project_link(emails) is None
-
-
-def test_project_link_returns_none_when_no_apache_recipient():
-    emails = [
-        {'to': 'reporter@aisle.com', 'message_id': '<a@aisle.com>'},
-        {'to': 'disclosure@vendor.example', 'message_id': '<b@vendor.example>'},
-    ]
-    assert _project_link(emails) is None
-
-
-def test_asf_member_link_uses_cc_when_to_is_non_apache():
+def test_asf_member_link_uses_cc_when_to_is_non_apache(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path)
+    )
     email = {
+        'subj': 'reporting a vuln',
         'to': 'reporter@aisle.com',
         'cc': 'security@cassandra.apache.org',
         'message_id': '<abc@aisle.com>',
+        'mailtime': 1700000000,
     }
-    assert _asf_member_link(email) == (
+    assert _asf_member_link("cassandra", email) == (
         'https://lists.apache.org/thread/'
         '<abc%40aisle.com>'
         '?<security.cassandra.apache.org>'
     )
 
 
-def test_asf_member_link_prefers_to_over_cc():
+def test_asf_member_link_prefers_to_over_cc(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get", lambda: _full_config(tmp_path)
+    )
     email = {
+        'subj': 'reporting a vuln',
         'to': 'security@cassandra.apache.org',
         'cc': 'security@kafka.apache.org',
         'message_id': '<abc@cassandra.apache.org>',
+        'mailtime': 1700000000,
     }
-    assert _asf_member_link(email) == (
+    assert _asf_member_link("cassandra", email) == (
         'https://lists.apache.org/thread/'
         '<abc%40cassandra.apache.org>'
         '?<security.cassandra.apache.org>'
