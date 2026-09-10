@@ -2,7 +2,8 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
-    "python_full_version >= '3.13'",
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
     "python_full_version < '3.13'",
 ]
 
@@ -178,12 +179,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/93/a2/d8177d6ff5302bebf508247d9252e5a51e6168e72352616ff3ad1f1a0294/asfpy-0.58-py3-none-any.whl", hash = "sha256:a94b3da5c673c6dd43d3c4e54317096f50236e47a8242f31f0f8b291a9184679", size = 38831, upload-time = "2026-02-12T19:51:34.14Z" },
 ]
 
-[package.optional-dependencies]
-aioldap = [
-    { name = "bonsai" },
-    { name = "passlib" },
-]
-
 [[package]]
 name = "asfquart"
 version = "0.1.12"
@@ -219,26 +214,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/21/28/9b3f50ce0e048515135495f198351908d99540d69bfdc8c1d15b73dc55ce/blinker-1.9.0.tar.gz", hash = "sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf", size = 22460, upload-time = "2024-11-08T17:25:47.436Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/cb/f2ad4230dc2eb1a74edf38f1a38b9b52277f75bef262d8908e60d957e13c/blinker-1.9.0-py3-none-any.whl", hash = "sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc", size = 8458, upload-time = "2024-11-08T17:25:46.184Z" },
-]
-
-[[package]]
-name = "bonsai"
-version = "1.5.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/75/4e/5572ad9689c8b04759ffa53dfcb0784524cc2e9f7884f67ed681508d6763/bonsai-1.5.5.tar.gz", hash = "sha256:417d2c28ec91af0300c9715cc724b84a79ec3b471bc41d3a0a71009fae0cb022", size = 151228, upload-time = "2026-02-18T20:35:10.507Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/27/8fca017575cc05e4074848f6c295e1c745596c09b4f8fb8a0d5881c23ec1/bonsai-1.5.5-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:1b9d8228b3ae334dd3f9bde6bcc81fc432b07da6aacd4b2de8085b40b6f3aa5b", size = 2903501, upload-time = "2026-02-18T20:34:46.283Z" },
-    { url = "https://files.pythonhosted.org/packages/79/34/a752063a9de4cf08c1b200d212b49ee74e84169ce0bcab9f2e9a2f9d2f23/bonsai-1.5.5-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:b9a6385e21c549b4ff75fa8e946bd5b08c8891e8cdf6b1c5a72baf47a3e1338b", size = 2679620, upload-time = "2026-02-18T20:34:48.761Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/1d/1bb05940c6fa3c18bf34e192a59474af0fd62c8d8452be8f1581d55eced1/bonsai-1.5.5-cp312-cp312-win32.whl", hash = "sha256:fb9a1fcf149fb3fdabfc33a24aad0c1485a88bf619e5a36b7f0898d11b7cd03e", size = 81911, upload-time = "2026-02-18T20:34:50.799Z" },
-    { url = "https://files.pythonhosted.org/packages/ff/25/879240de216efdeec5f4bf43698ce214e90c474f4bc27e5998e65b60015b/bonsai-1.5.5-cp312-cp312-win_amd64.whl", hash = "sha256:5c941199b8349761c207366013e4481df52d99c83e6c10ed1372de890ea230f3", size = 87582, upload-time = "2026-02-18T20:34:52.45Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/3a/af631be0af15e05eeab7bbd83ec0b0f6efc64bd268d8e778aa7b68d2565a/bonsai-1.5.5-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:850933a9cf5d918b14b9b2bfa4d28e8f39f55140f861a0163c8c7f7d7142d641", size = 2903454, upload-time = "2026-02-18T20:34:55.161Z" },
-    { url = "https://files.pythonhosted.org/packages/37/c2/a51eb5cfded2e5481f2ce131f0e55d798c02f7f78eb589102791ee1d6b05/bonsai-1.5.5-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:e3ea37384e6af87517b7fb467acca8001580afa47644b572c2a881206524c52b", size = 2679567, upload-time = "2026-02-18T20:34:57.767Z" },
-    { url = "https://files.pythonhosted.org/packages/d9/45/2dce7b3189139e75f3679a1849bdb3f8c5836a429ffc201d10d4601f8d8b/bonsai-1.5.5-cp313-cp313-win32.whl", hash = "sha256:ca619376ac52c97cbe785e4ccfabda2a3a9d3c3f55da8cd304753de0eb356be0", size = 81904, upload-time = "2026-02-18T20:34:59.567Z" },
-    { url = "https://files.pythonhosted.org/packages/32/1b/1d1a6b2bf8009afb6df9bf4b9318da5503e36364e83d7d826bd77002fb6c/bonsai-1.5.5-cp313-cp313-win_amd64.whl", hash = "sha256:8d0d41db8b6cf9e3f78122ae92c98f0785a8c87cf6e5929b59b36836df666b44", size = 87573, upload-time = "2026-02-18T20:35:01.303Z" },
-    { url = "https://files.pythonhosted.org/packages/eb/b5/46f4b7b14a546ed6d1ba6b0653101a27253338d22f603c1a07c866f49dcd/bonsai-1.5.5-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:7da307dcf0d796ab6594aabe7dc2248a58146e60e1513f0349cc5d8c7102ee55", size = 2903451, upload-time = "2026-02-18T20:35:03.466Z" },
-    { url = "https://files.pythonhosted.org/packages/24/5c/03e14ba11d1f8ff226b957f00d69cddf349a13ba1c0228bb51eb965f9f82/bonsai-1.5.5-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:e822a8e0a02a10ee2dc2276a43538d67ab1fa4974a33f34cb763b246db6d52f7", size = 2679708, upload-time = "2026-02-18T20:35:05.886Z" },
-    { url = "https://files.pythonhosted.org/packages/f5/21/7092fa42ee0323bae7731ceff384fe909ea4ee333fe478b1e19528aebb67/bonsai-1.5.5-cp314-cp314-win32.whl", hash = "sha256:2517590867ef77cdaaa1ceee2411703f5f1b14e1938786d7855d0a45ec835d3d", size = 82939, upload-time = "2026-02-18T20:35:07.223Z" },
-    { url = "https://files.pythonhosted.org/packages/43/e5/bc67ee45881e0fcd64542669ef90d5a49ffabae17b408a068857e2577659/bonsai-1.5.5-cp314-cp314-win_amd64.whl", hash = "sha256:8b8df73b61c74d819a06cacd9df8a61e1a13e84a9fca091fd1661bb2ca7aaa4f", size = 88796, upload-time = "2026-02-18T20:35:09.318Z" },
 ]
 
 [[package]]
@@ -963,15 +938,6 @@ wheels = [
 ]
 
 [[package]]
-name = "passlib"
-version = "1.7.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b6/06/9da9ee59a67fae7761aab3ccc84fa4f3f33f125b370f1ccdb915bf967c11/passlib-1.7.4.tar.gz", hash = "sha256:defd50f72b65c5402ab2c573830a6978e5f202ad0d984793c8dde2c4152ebe04", size = 689844, upload-time = "2020-10-08T19:00:52.121Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/a4/ab6b7589382ca3df236e03faa71deac88cae040af60c071a78d254a62172/passlib-1.7.4-py2.py3-none-any.whl", hash = "sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1", size = 525554, upload-time = "2020-10-08T19:00:49.856Z" },
-]
-
-[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1281,7 +1247,8 @@ name = "quart"
 version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13'",
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
 ]
 dependencies = [
     { name = "aiofiles" },
@@ -1319,7 +1286,7 @@ name = "security-dashboard-frontend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "asfpy", extra = ["aioldap"] },
+    { name = "asfpy" },
     { name = "asfquart" },
     { name = "hypercorn" },
     { name = "pydantic" },
@@ -1332,7 +1299,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "asfpy", extras = ["aioldap"] },
+    { name = "asfpy" },
     { name = "asfquart", specifier = "~=0.1.12" },
     { name = "hypercorn" },
     { name = "pydantic", specifier = "~=2.11" },
