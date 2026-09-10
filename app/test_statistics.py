@@ -20,7 +20,7 @@ import json
 import types
 
 from app import statistics
-from app.statistics import IssueWindow
+from app.statistics import DEBT_CONSTANT, IssueWindow
 
 
 def _ts(d: datetime.date) -> float:
@@ -45,8 +45,8 @@ def test_is_open_at_still_open():
 
 def test_debt_at_is_constant_plus_age():
     w = IssueWindow(datetime.date(2025, 1, 1), None)
-    assert w.debt_at(datetime.date(2025, 1, 1)) == 100
-    assert w.debt_at(datetime.date(2025, 1, 6)) == 105
+    assert w.debt_at(datetime.date(2025, 1, 1)) == DEBT_CONSTANT
+    assert w.debt_at(datetime.date(2025, 1, 6)) == DEBT_CONSTANT + 5
 
 
 def test_week_end_dates_last_point_is_today():
@@ -64,10 +64,10 @@ def test_issue_window_reads_first_and_last_mailtime(tmp_path):
         {"mailtime": _ts(datetime.date(2025, 1, 1))},
         {"mailtime": _ts(datetime.date(2025, 1, 20))},
     ]))
-    assert statistics._issue_window(path, closed=False) == IssueWindow(
+    assert statistics._issue_window({}, path, closed=False) == IssueWindow(
         datetime.date(2025, 1, 1), None
     )
-    assert statistics._issue_window(path, closed=True) == IssueWindow(
+    assert statistics._issue_window({}, path, closed=True) == IssueWindow(
         datetime.date(2025, 1, 1), datetime.date(2025, 1, 20)
     )
 
@@ -75,7 +75,7 @@ def test_issue_window_reads_first_and_last_mailtime(tmp_path):
 def test_issue_window_skips_empty(tmp_path):
     path = tmp_path / "empty.json"
     path.write_text("[]")
-    assert statistics._issue_window(path, closed=False) is None
+    assert statistics._issue_window({}, path, closed=False) is None
 
 
 def test_issue_window_ignores_repeat_cve_pushed(tmp_path):
@@ -87,7 +87,7 @@ def test_issue_window_ignores_repeat_cve_pushed(tmp_path):
         {"mailtime": _ts(datetime.date(2025, 1, 20)), "subj": "CVE-2025-1 was pushed to cve.org"},
         {"mailtime": _ts(datetime.date(2025, 6, 1)), "subj": "CVE-2025-1 was pushed to cve.org"},
     ]))
-    assert statistics._issue_window(path, closed=True) == IssueWindow(
+    assert statistics._issue_window({}, path, closed=True) == IssueWindow(
         datetime.date(2025, 1, 1), datetime.date(2025, 1, 20)
     )
 
@@ -113,11 +113,14 @@ def test_compute_debt_chart_end_to_end(tmp_path, monkeypatch):
         proj1_closed.opened, proj1_closed.closed,
     )
     _write_thread(
-        tmp_path / "archive" / "zzz-non-issues" / "proj2" / "ni.json",
+        tmp_path / "archive" / "zzz-non-issue" / "proj2" / "ni.json",
         proj2_ni.opened, proj2_ni.closed,
     )
 
-    fake_cfg = types.SimpleNamespace(data_dir_path=tmp_path)
+    fake_cfg = types.SimpleNamespace(
+        data_dir_path=tmp_path,
+        old_cve_close_dates=[]
+    )
     monkeypatch.setattr(statistics.config, "get", lambda: fake_cfg)
 
     # 'archive' is not itself a project; the two real projects are discovered
@@ -140,7 +143,7 @@ def test_compute_debt_chart_end_to_end(tmp_path, monkeypatch):
     assert series["proj2"] == expected2
 
     # sanity: the open issue keeps proj1 non-zero at 'now'; proj2's only issue is closed
-    assert series["proj1"][-1] == 100 + (now.date() - proj1_open.opened).days
+    assert series["proj1"][-1] == DEBT_CONSTANT + (now.date() - proj1_open.opened).days
     assert series["proj2"][-1] == 0
 
     # restricting to a pmc set only returns those projects

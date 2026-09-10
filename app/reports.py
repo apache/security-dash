@@ -98,11 +98,12 @@ class Report:
     def asf_member_link(self) -> str:
         return _ponymail_link(self.messageid, self.listid)
 
-def _known_bad_address(time, address):
-    mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
-    spark_retirement = datetime.date.fromisoformat("2026-02-16")
-    if address == 'security@spark.apache.org' and spark_retirement < mailtime:
-        return True
+def _known_bad_address(time: str | None, address: str):
+    if time:
+        mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
+        spark_retirement = datetime.date.fromisoformat("2026-02-16")
+        if address == 'security@spark.apache.org' and spark_retirement < mailtime:
+            return True
     return False
 
 def _apache_list_address(email):
@@ -112,7 +113,7 @@ def _apache_list_address(email):
     for _, address in addresses:
         if address == "officesecurity@lists.freedesktop.org":
             return "security@openoffice.apache.org"
-        if address.endswith('.apache.org') and not _known_bad_address(email['mailtime'], address):
+        if address.endswith('.apache.org') and not _known_bad_address(email.get('mailtime'), address):
             return address
     return None
 
@@ -146,9 +147,12 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     m = re.match(r"(?:CVE-\S+\s+)*CVE-\S+", path.name)
     cves = m.group(0).split() if m else []
 
+    return _load_pmc_report(pmc, path.name, cves, emails)
+
+def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object]) -> Report | None:
     jira = None
     if pmc in config.get().pmcs_using_jira:
-        m = re.match(r"\S+ (\d+) .*", path.name)
+        m = re.match(r"\S+ (\d+) .*", name)
         if m:
             jira = config.get().pmcs_using_jira[pmc] + "-" + m.group(1)
 
@@ -164,7 +168,7 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     if cves:
         state = "confirmed"
     else:
-        m = re.match(r".*wf (.*).json", path.name)
+        m = re.match(r".*wf (.*).json", name)
         if not m:
             state = "untriaged"
         elif m.groups()[0] == "cve-allocation":
@@ -173,7 +177,7 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
             state = m.groups()[0]
 
     # the subproject is the word after the leading date or CVE(s)
-    m = re.match(r"(?:(?:CVE-\S+\s+)*CVE-\S+|\d{4}-\d{2}-\d{2})\s+(\w+)", path.name)
+    m = re.match(r"(?:(?:CVE-\S+\s+)*CVE-\S+|\d{4}-\d{2}-\d{2})\s+(\w+)", name)
     subproject = m.group(1) if m else None
 
     if not emails:
@@ -202,7 +206,7 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
         listid = 'security.apache.org'
 
     return Report(
-        path.name,
+        name,
         cves,
         github,
         jira,

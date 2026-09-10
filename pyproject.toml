@@ -13,3 +13,5 @@ dependencies = [
 [tool.pytest.ini_options]
 norecursedirs = ["notes"]
 
+[dependency-groups]
+dev = ["pytest"]
