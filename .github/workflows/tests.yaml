@@ -25,4 +25,4 @@ jobs:
       uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
     - name: Run tests
-      run: uv sync --frozen --no-dev --extra test --python 3.12 && uv run pytest
+      run: uv sync --frozen --no-dev --python 3.12 && uv run pytest
