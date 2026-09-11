@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.apache.org/schemas/dashboard/case.schema.json",
+  "title": "Security issue case",
+  "description": "One JSON file under the dashboard's `data_dir`, holding the header metadata of every email linked to a single security issue: the original report, any duplicate reports of the same issue, and follow-ups that are not part of the same mail thread. The file name carries the classification (CVE ids, date, subproject, workflow state); the contents carry only header metadata, never message bodies.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "$ref": "#/$defs/email"
+  },
+  "$defs": {
+    "email": {
+      "type": "object",
+      "description": "Header metadata of one email linked to the case.",
+      "required": [
+        "mailtime",
+        "subj",
+        "from",
+        "to",
+        "message_id"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "mailtime": {
+          "type": "integer",
+          "description": "Send time of the email, as Unix epoch seconds (UTC), parsed from the `Date:` header. The dashboard uses the first entry's mailtime as the date the case was opened and, once the case is closed, the last entry's mailtime as the date it was closed.",
+          "minimum": 0,
+          "examples": [
+            1700000000
+          ]
+        },
+        "subj": {
+          "type": "string",
+          "description": "Raw `Subject:` header. May still be RFC 2047 encoded (`=?utf-8?...?=`); consumers decode it. A subject ending in 'was pushed to cve.org' marks the point where the dashboard stops counting the case as open.",
+          "examples": [
+            "[SECURITY] path traversal in the FooServlet",
+            "CVE-2026-12345 was pushed to cve.org"
+          ]
+        },
+        "from": {
+          "type": "string",
+          "description": "Raw `From:` header, an RFC 5322 address list. When the address is an apache.org list and the display name contains ' via ', the real reporter is in `reply_to` instead.",
+          "examples": [
+            "Jane Reporter <jane@example.com>"
+          ]
+        },
+        "to": {
+          "type": "string",
+          "description": "Raw `To:` header, an RFC 5322 address list. The first apache.org address found in `to`, then `cc`, identifies the mailing list the email belongs to and hence the lists.apache.org permalink.",
+          "examples": [
+            "security@cassandra.apache.org"
+          ]
+        },
+        "message_id": {
+          "type": "string",
+          "description": "Raw `Message-ID:` header, angle-bracketed. Percent-encoded into the lists.apache.org thread permalink.",
+          "pattern": "^<.+>$",
+          "examples": [
+            "<abc123@cassandra.apache.org>"
+          ]
+        },
+        "cc": {
+          "type": "string",
+          "description": "Raw `Cc:` header, an RFC 5322 address list. Optional: the dashboard reads it when present, to find the mailing list when `to` holds no apache.org address.",
+          "examples": [
+            "security@cassandra.apache.org"
+          ]
+        },
+        "reply_to": {
+          "type": "string",
+          "description": "Raw `Reply-To:` header, an RFC 5322 address list. Optional: the dashboard reads it when present, to recover the reporter behind a 'Jane Reporter via Security <security@apache.org>' sender.",
+          "examples": [
+            "Jane Reporter <jane@example.com>"
+          ]
+        }
+      }
+    }
+  },
+  "examples": [
+    [
+      {
+        "mailtime": 1700000000,
+        "subj": "[SECURITY] path traversal in the FooServlet",
+        "from": "Jane Reporter <jane@example.com>",
+        "to": "security@apache.org",
+        "message_id": "<abc123@example.com>"
+      },
+      {
+        "mailtime": 1700086400,
+        "subj": "Re: [SECURITY] path traversal in the FooServlet",
+        "from": "A Committer <committer@apache.org>",
+        "to": "security@cassandra.apache.org",
+        "message_id": "<def456@cassandra.apache.org>"
+      }
+    ]
+  ]
+}
