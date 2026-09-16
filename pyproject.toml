@@ -2,6 +2,8 @@
 name = "security-dashboard-backend-api"
 version = "0.1.0"
 license = "Apache-2.0"
+# 3.12 is what infra provides at the time of writing
+requires-python = ">= 3.12"
 
 dependencies = [
   "aiosmtplib",
