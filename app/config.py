@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from asfquart.base import QuartApp
 import pathlib
 import pydantic
 from typing import cast
