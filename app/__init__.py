@@ -18,9 +18,9 @@
 """Security issue dashboard API for the Apache Software Foundation"""
 
 from app.config import AppConfig
+from app.model import AcceptReport, RejectReport
 from app import config
 import asfquart
-import dataclasses
 from app.mail import accept_email, reject_email, send_email, valid_pmc, valid_sender
 import json
 import os
@@ -40,20 +40,6 @@ API = quart.Blueprint(
         __name__,
         url_prefix="/",
 )
-
-@dataclasses.dataclass
-class AcceptReport:
-    sender: str
-    tag: str
-    message_id: str
-    response: str
-
-@dataclasses.dataclass
-class RejectReport:
-    sender: str
-    tag: str
-    message_id: str
-    response: str
 
 def _get_report_info(tag: str, _message_id: str):
     """Path to the report file. Raises if the tag points outside the data directory."""

@@ -24,7 +24,7 @@ from typing import Final
 import aiosmtplib
 
 from app import config
-from app import AcceptReport, RejectReport, config
+from app.model import AcceptReport, RejectReport
 
 _SMTP_TIMEOUT: Final[int] = 30
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
