@@ -8,7 +8,7 @@ Environment=UV_PYTHON_DOWNLOADS=never
 Type=exec
 WorkingDirectory=/opt/dashboard-backend-api
 PIDFile=/opt/dashboard-backend-api/state/dashboard-backend-api.pid
-ExecStart=/usr/local/bin/uv run --frozen hypercorn server:application
+ExecStart=/usr/local/bin/uv run --frozen hypercorn server:application -b 127.0.0.1:5001
 ExecReload=/bin/kill -SIGINT $MAINPID
 Restart=always
 MountAPIVFS=yes
