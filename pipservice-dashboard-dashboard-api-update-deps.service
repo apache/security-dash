@@ -1,0 +1,24 @@
+[Unit]
+Description=Job to run manually to update deps inside the sandbox
+
+[Service]
+Environment=PYTHONUNBUFFERED=1
+Environment=UV_PYTHON=/usr/bin/python3
+Type=simple
+Environment=HOME=/opt/dashboard-backend-api
+WorkingDirectory=/opt/dashboard-backend-api
+ExecStart=/usr/local/bin/uv sync --frozen
+Restart=no
+PrivateTmp=yes
+NoNewPrivileges=true
+ProtectSystem=strict
+RestrictNamespaces=uts ipc pid user cgroup
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+PrivateDevices=yes
+RestrictSUIDSGID=true
+TemporaryFileSystem=/
+BindReadOnlyPaths=/usr /bin /lib
+BindPaths=/opt/dashboard-backend-api
+
+[Install]
