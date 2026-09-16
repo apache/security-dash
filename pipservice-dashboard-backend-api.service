@@ -14,6 +14,7 @@ Restart=always
 MountAPIVFS=yes
 TemporaryFileSystem=/
 BindReadOnlyPaths=/usr /opt/dashboard-backend-api /opt/email-classification /opt/pipx/venvs/uv /lib /lib64 /bin /sbin /etc/resolv.conf /etc/nsswitch.conf /etc/ssl/certs
+BindPaths=/opt/dashboard-backend-api/state
 
 [Install]
 WantedBy=multi-user.target
