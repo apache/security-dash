@@ -6,6 +6,7 @@ license = "Apache-2.0"
 requires-python = ">= 3.12"
 
 dependencies = [
+  "aiohttp",
   "asfpy[aioldap]",
   "asfquart~=0.1.12",
   "hypercorn",
