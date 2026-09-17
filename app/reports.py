@@ -114,7 +114,9 @@ def _apache_list_address(email):
         if address == "officesecurity@lists.freedesktop.org":
             return "security@openoffice.apache.org"
         if address.endswith('.apache.org') and not _known_bad_address(email.get('mailtime'), address):
-            return address
+            # external emails to moderated addresses may be dropped
+            if address.startswith("security") or getaddresses(email['from'])[0][1].endswith("@apache.org"):
+                return address
     return None
 
 def _ponymail_link(messageid, listid):
