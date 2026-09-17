@@ -41,10 +41,10 @@ API = quart.Blueprint(
         url_prefix="/",
 )
 
-def _get_report_info(tag: str, _message_id: str):
+def _get_report_info(pmc: str, tag: str, _message_id: str):
     """Path to the report file. Raises if the tag points outside the data directory."""
     data_dir = config.get().data_dir_path.resolve()
-    info = pathlib.Path(data_dir, f"{tag}.json").resolve()
+    info = pathlib.Path(data_dir, f"{pmc}/{tag}.json").resolve()
     if not info.is_relative_to(data_dir):
         raise ValueError(f"Report tag escapes the data directory: {tag!r}")
     return info
@@ -52,13 +52,14 @@ def _get_report_info(tag: str, _message_id: str):
 @API.route("/triage/accept", methods=["POST"])
 @quart_schema.validate_request(AcceptReport)
 async def accept(data: AcceptReport):
-    if not valid_pmc(data.tag.split("/", 1)[0]):
+    if not valid_pmc(data.pmc):
         quart.abort(400, "Invalid PMC")
         return
     if not valid_sender(data.sender):
         quart.abort(400, "Invalid sender")
         return
-    info = _get_report_info(data.tag, data.message_id)
+    info = _get_report_info(data.pmc, data.tag, data.message_id)
+    print(info)
     if not info.exists():
         quart.abort(404)
         return
@@ -77,10 +78,10 @@ async def accept(data: AcceptReport):
 @API.route("/triage/reject", methods=["POST"])
 @quart_schema.validate_request(RejectReport)
 async def reject(data: RejectReport):
-    if not valid_pmc(data.tag.split("/", 1)[0]) or not valid_sender(data.sender):
+    if not valid_pmc(data.pmc) or not valid_sender(data.sender):
         quart.abort(400)
         return
-    info = _get_report_info(data.tag, data.message_id)
+    info = _get_report_info(data.pmc, data.tag, data.message_id)
     if not info.exists():
         quart.abort(404)
         return

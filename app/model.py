@@ -20,6 +20,8 @@ import dataclasses
 @dataclasses.dataclass
 class AcceptReport:
     sender: str
+    sender_name: str
+    pmc: str
     tag: str
     message_id: str
     response: str
@@ -27,6 +29,8 @@ class AcceptReport:
 @dataclasses.dataclass
 class RejectReport:
     sender: str
+    sender_name: str
+    pmc: str
     tag: str
     message_id: str
     response: str

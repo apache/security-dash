@@ -76,7 +76,7 @@ def _response(pmc: str, sender: str, message_id: str, report: dict):
     return res
 
 def accept_email(acceptance: AcceptReport, report: dict):
-    pmc = acceptance.tag.split("/", 1)[0]
+    pmc = acceptance.pmc
     res = _response(pmc, acceptance.sender, acceptance.message_id, report)
 
     if acceptance.response:
@@ -84,34 +84,55 @@ def accept_email(acceptance: AcceptReport, report: dict):
     else:
         additional_comment = "";
 
+    # TODO lookup project name mapping
+    project = f"Apache {pmc.capitalize()}"
+
+    if pmc in config.get().pmcs_with_security_emails:
+        signatory = f"{acceptance.sender_name} on behalf of the {project} Security Team"
+    else:
+        signatory = f"{acceptance.sender_name} on behalf of the {project} PMC"
+
     res.set_content(f'''Hello,
 
-    Thank you for your report. We have decided to accept it
-    and will be working on a fix.
-    {additional_comment}
-    Please keep this information private. After the version
-    with the version with the fix has been released, we will
-    publish a CVE advisory crediting you.
+Thank you for your report. We have decided to accept it
+and will be working on a fix.
+{additional_comment}
+Please keep this information private. After the version
+with the version with the fix has been released, we will
+publish a CVE advisory crediting you.
 
-    {pmc}
-    ''')
+Kind regards,
+
+{signatory}
+''')
 
     return res
 
 def reject_email(rejection: RejectReport, report: dict):
-    pmc = rejection.tag.split("/", 1)[0]
+    pmc = rejection.pmc
     res = _response(pmc, rejection.sender, rejection.message_id, report)
     if rejection.response:
         additional_comment = f"\n{rejection.response}\n"
     else:
         additional_comment = "";
 
+    # TODO lookup project name mapping
+    project = f"Apache {pmc.capitalize()}"
+
+    if pmc in config.get().pmcs_with_security_emails:
+        signatory = f"{rejection.sender_name} on behalf of the {project} Security Team"
+    else:
+        signatory = f"{rejection.sender_name} on behalf of the {project} PMC"
+
     res.set_content(f'''Hello,
 
-    Thank you for your report. However, we have decided to reject it.
-    {additional_comment}
-    {pmc}
-    ''')
+Thank you for your report. The PMC has determined that the issue you reported is not a vulnerability in {project}.
+{additional_comment}
+
+Kind regards,
+
+{signatory}
+''')
 
     return res
 

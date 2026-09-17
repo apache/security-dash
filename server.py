@@ -27,5 +27,6 @@ if __name__ == "__main__":
     # prod uses hypercorn (scripts/run.sh) instead
     application.run(
         use_reloader=True,
+        port=5002,
         debug=True,
     )
