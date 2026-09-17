@@ -188,3 +188,143 @@ footer p {
 .congrats {
   font-size: 2em;
 }
+
+.banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.banner-success {
+  border-color: #1e7a3c;
+  background-color: #e8f5ec;
+}
+
+.banner-error {
+  border-color: #a12a2a;
+  background-color: #fbeaea;
+}
+
+.reports-triage {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.triage {
+  position: relative;
+}
+
+.triage summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Out of flow, so opening one report's form does not resize the columns -
+   and with them every other row - while it is on screen. */
+.triage[open] > form {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 2;
+  width: 80rem;
+  max-width: 80vw;
+  padding: 0.75rem;
+  border: 1px solid #d1d2d3;
+  border-radius: 4px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: normal;
+  word-break: normal;
+  text-align: left;
+}
+
+.triage-decision {
+  border: none;
+  margin-bottom: 0.75rem;
+}
+
+.triage-decision label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: 1rem;
+}
+
+.triage-preview {
+  border: 1px solid #d1d2d3;
+  border-radius: 4px;
+  background-color: #fafafa;
+  font-weight: 400;
+}
+
+/* There is no message to preview until a decision is picked. Driven by
+   triage.js rather than :has(), which Firefox only got in 121 and which can be
+   switched off; the form is hidden only once that script is there to show it. */
+.triage form.triage-js .triage-preview {
+  display: none;
+}
+
+.triage form.triage-js[data-decision] .triage-preview {
+  display: block;
+}
+
+.triage-headers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #d1d2d3;
+  font-size: 0.85rem;
+}
+
+.triage-headers dt {
+  color: #555;
+}
+
+.triage-body {
+  padding: 0.75rem;
+}
+
+.triage-body > p {
+  margin-bottom: 0.75rem;
+}
+
+/* The sentence the reporter will read is the one the PMC selects. Hidden only
+   under .triage-js, for the same reason as the preview above. */
+.triage form.triage-js .triage-if-accept,
+.triage form.triage-js .triage-if-reject {
+  display: none;
+}
+
+.triage form.triage-js[data-decision="accept"] .triage-if-accept,
+.triage form.triage-js[data-decision="reject"] .triage-if-reject {
+  display: inline;
+}
+
+.triage-feedback {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.triage-feedback textarea {
+  display: block;
+  width: 100%;
+  padding: 0.4rem;
+  font: inherit;
+}
+
+.triage-closing {
+  white-space: pre-line;
+  margin-bottom: 0;
+}
+
+.triage-actions {
+  margin-top: 0.75rem;
+}
+
+.triage-actions button {
+  padding: 0.35rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}

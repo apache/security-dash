@@ -17,7 +17,7 @@
 
 """Security issue dashboard for the Apache Software Foundation"""
 
-from app import reports, statistics, utils
+from app import reports, statistics, triage, utils
 from app.config import AppConfig
 import asfquart
 import asfquart.auth
@@ -71,7 +71,7 @@ _STATE_TITLES: dict[str, str] = {
     "non-issue-upstream": "Non-issue: pending upstream",
 }
 _STATE_DESCRIPTIONS: dict[str, str] = {
-    "untriaged": "After initial analysis, either reject the issue and provide feedback to the reporter, or accept it and allocate a CVE",
+    "untriaged": "Triage of incoming security reports should happen fairly quickly, because it's the phase in which the PMC decides whether this is an urgent issue. Triage is complete when the PMC decides whether issue is a vulnerability and provides that feedback to the reporter.",
     "confirmed": "The PMC has accepted and is working on these issues. For those that don't have CVEs allocated yet, this can be done now",
     "disclosure": "A fix for these issues has been released. When you are happy with the advisory in the cveprocess tool, you can send them by moving the state to READY and using the 'Send these Emails' button on the 'OSS/ASF Emails' tab in cveprocess.",
     "non-issue-upstream": "Make sure the issue is fixed upstream and a release is made with the fix, or find an alternative to the problematic upstream component",
@@ -96,7 +96,7 @@ def _asf_group_acl(project, pmc_membership, project_membership):
         )
     )
 
-async def _require_authorization_for(project: str) -> None:
+async def _require_authorization_for(project: str) -> utils.UserSession:
     user = await utils.UserSession.create()
     if not user.is_authenticated:
         raise asfquart.auth.AuthenticationFailed(asfquart.auth.Requirements.E_NOT_LOGGED_IN)
@@ -104,6 +104,7 @@ async def _require_authorization_for(project: str) -> None:
     if (not _asf_group_acl(project, pmcs, user.projects)
         and not _asf_group_acl("security", pmcs, user.projects)):
         raise asfquart.auth.AuthenticationFailed(f"You are not a member of the {project} PMC.")
+    return user
 
 async def _require_authentication() -> utils.UserSession:
     user = await utils.UserSession.create()
@@ -159,13 +160,20 @@ async def project(project: str):
     r = await reports.load_pmc_reports(project)
     states = sorted(dict.fromkeys(report.state for report in r), key=_state_sort_key)
     sections = [
-        (_state_title(state), _state_description(state), [report for report in r if report.state == state])
+        (
+            _state_title(state),
+            _state_description(state),
+            triage.form_template(project, state),
+            [report for report in r if report.state == state],
+        )
         for state in states
     ]
     return await quart.render_template("project.html",
         project_name=project,
         debt_constant=statistics.DEBT_CONSTANT,
         sections=sections,
+        max_feedback_length=triage.MAX_FEEDBACK_LENGTH,
+        message_preview=triage.message_preview,
         show_subproject=project in config.get().pmcs_with_subprojects or project == "security")
 
 @CLIENT.route("/api/project/<project>/reports")
@@ -177,12 +185,73 @@ async def project_reports_api(project: str):
         {
             "cves": report.cves,
             "title": report.title,
+            "message_id": report.message_id,
             "asf_member_link": report.asf_member_link,
             "state": report.state,
             "date": report.date.isoformat(),
         }
         for report in r
     ])
+
+def _wants_json() -> bool:
+    """Whether to answer with JSON (an API call) rather than a redirect (a form post)."""
+    if quart.request.is_json:
+        return True
+    return quart.request.accept_mimetypes.best_match(["text/html", "application/json"]) == "application/json"
+
+def _require_same_origin() -> None:
+    """Refuse browser posts that did not come from this origin.
+
+    The session cookie is SameSite=Strict, so a cross-*site* post carries no
+    session and fails to authenticate anyway. This narrows that to the origin,
+    which SameSite does not do: another apache.org app is same-site but not
+    same-origin. Requests without the header (API clients, and browsers too old
+    to send Fetch Metadata) are let through and authenticated as usual.
+    """
+    if quart.request.headers.get("Sec-Fetch-Site") not in (None, "same-origin"):
+        quart.abort(403, "CSRF Protection")
+
+async def _triage_payload() -> dict[str, object]:
+    if quart.request.is_json:
+        payload = await quart.request.get_json()
+        if not isinstance(payload, dict):
+            raise triage.TriageError("expected a JSON object")
+        return payload
+    return (await quart.request.form).to_dict()
+
+@CLIENT.route("/api/project/<project>/triage", methods=["POST"])
+async def project_triage_api(project: str):
+    """Take a triage decision on one report, from the project view or as an API call."""
+    user = await _require_authorization_for(project)
+    _require_same_origin()
+
+    try:
+        payload = await _triage_payload()
+        decision = triage.parse_decision(
+            project, await reports.load_pmc_reports(project), payload, uid=user.uid, name=user.fullname
+        )
+        print(f"User {user.uid} triaged {project} report "
+              f"{decision.report.security_team_name!r} as {decision.action}")
+        await triage.submit(decision)
+    except triage.TriageError as e:
+        return await _triage_response(project, e.message, "error", e.status)
+    except triage.TriageUnavailable as e:
+        return await _triage_response(project, str(e), "error", 501)
+
+    return await _triage_response(
+        project,
+        triage.CONFIRMATION_MESSAGES[decision.action],
+        "success",
+        200,
+        action=decision.action,
+        message_id=decision.report.message_id,
+    )
+
+async def _triage_response(project: str, message: str, category: str, status: int, **details: Any):
+    if _wants_json():
+        return quart.jsonify({"status": category, "message": message, **details}), status
+    await quart.flash(message, category)
+    return quart.redirect(quart.url_for("client.project", project=project), code=303)
 
 def _register_routes(quart_app: asfquart.base.QuartApp) -> None:
     quart_app.register_blueprint(CLIENT)
