@@ -27,6 +27,20 @@ import pathlib
 from quart import current_app
 import re
 
+GLASSWING_LABEL = "aaa-glasswing"
+"""Label holding the CVEs allocated as part of the Glasswing audit, rather
+   than reported separately from outside."""
+
+NOT_FORWARDED_LABEL = "aaa-non-fwd"
+"""Label collecting the threads that have not been forwarded to the PMC yet."""
+
+GLASSWING_STATE = "glasswing"
+NOT_FORWARDED_STATE = "non-fwd"
+
+_CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}")
+_CVE_PUBLISHED_SUFFIX = "was pushed to cve.org"
+"""Subject suffix of the mail announcing that a CVE went public."""
+
 @dataclasses.dataclass(frozen=True)
 class Reporter:
     name: str
@@ -128,6 +142,25 @@ def _project_link(emails):
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
     return _ponymail_link(emails[0]['message_id'], "security.apache.org")
 
+def _subject(email) -> str:
+    raw_subject = email.get('subj', '')
+    try:
+        subject = "".join(
+            s.decode(c or "ascii", errors="replace") if isinstance(s, bytes) else s
+            for s, c in decode_header(raw_subject)
+        )
+    except Exception:
+        subject = raw_subject
+    return subject.strip()
+
+def _title(email) -> str:
+    title = _subject(email) or "(untitled)"
+    if title.startswith("[SECURITY] "):
+        title = title.removeprefix("[SECURITY] ")
+    elif title.startswith("[Security] "):
+        title = title.removeprefix("[Security] ")
+    return title
+
 def _reporter(email) -> Reporter | None:
     addresses = [a for a in getaddresses([email.get('from', '')]) if a[1]]
     if not addresses:
@@ -185,19 +218,7 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         return None
 
     first_email = emails[0]
-    raw_subject = first_email['subj']
-    try:
-        title = "".join(
-            s.decode(c or "ascii", errors="replace") if isinstance(s, bytes) else s
-            for s, c in decode_header(raw_subject)
-        )
-    except Exception:
-        title = raw_subject
-    title = title.strip() or "(untitled)"
-    if title.startswith("[SECURITY] "):
-        title = title.removeprefix("[SECURITY] ")
-    elif title.startswith("[Security] "):
-        title = title.removeprefix("[Security] ")
+    title = _title(first_email)
 
     apache_list_address = _apache_list_address(first_email)
     if apache_list_address:
@@ -220,11 +241,121 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         datetime.datetime.fromtimestamp(first_email['mailtime'], tz=datetime.timezone.utc),
     )
 
+def _read_emails(path: pathlib.Path) -> list[object]:
+    try:
+        with open(path) as f:
+            emails = json.loads(f.read())
+    except (OSError, ValueError):
+        print(f"Unreadable label: {path.name}")
+        return []
+    # these labels collect many threads, so tolerate the odd unusable mail
+    return [
+        e for e in emails
+        if isinstance(e, dict) and e.get('message_id') and e.get('mailtime')
+    ]
+
+def _label_report(name: str, cves: list[str], email, state: str) -> Report:
+    """A report that stands for one entry inside a multi-thread label."""
+    apache_list_address = _apache_list_address(email)
+    if apache_list_address:
+        listid = apache_list_address.replace('@', '.')
+    else:
+        listid = 'security.apache.org'
+
+    return Report(
+        name,
+        cves,
+        None,
+        None,
+        _title(email),
+        email['message_id'],
+        listid,
+        _project_link([email]),
+        _reporter(email),
+        state,
+        None,
+        datetime.datetime.fromtimestamp(email['mailtime'], tz=datetime.timezone.utc),
+    )
+
+def _load_glasswing_reports(path: pathlib.Path) -> list[Report]:
+    """One entry per CVE allocated under the audit label but not published yet.
+
+    A CVE counts as published once the label holds the mail announcing it was
+    pushed to cve.org; until then it is listed with the mail that allocated it.
+    """
+    allocated: dict[str, object] = {}
+    published: set[str] = set()
+
+    for email in _read_emails(path):
+        subject = _subject(email)
+        cves = _CVE_RE.findall(subject)
+        if not cves:
+            continue
+        if subject.lower().endswith(_CVE_PUBLISHED_SUFFIX):
+            published.update(cves)
+            continue
+        for cve in cves:
+            allocated.setdefault(cve, email)
+
+    return [
+        _label_report(path.name, [cve], email, GLASSWING_STATE)
+        for cve, email in allocated.items()
+        if cve not in published
+    ]
+
+# a reply prefix, in the languages reporters actually use, or a [SECURITY] tag
+_SUBJECT_PREFIX_RE = re.compile(
+    r"^\s*(?:(?:re|aw|antw|fw|fwd|sv|vs)\s*(?:\[\d+\])?\s*:|\[security\])\s*",
+    re.IGNORECASE,
+)
+
+def _thread_key(subject: str) -> str:
+    """Group a thread's mails together by their subject, minus any prefixes."""
+    while True:
+        stripped = _SUBJECT_PREFIX_RE.sub("", subject)
+        if stripped == subject:
+            break
+        subject = stripped
+    return re.sub(r"\s+", " ", subject).strip().lower()
+
+def _load_not_forwarded_reports(path: pathlib.Path) -> list[Report]:
+    """One entry per thread head under the not-forwarded label."""
+    heads: dict[str, object] = {}
+
+    for email in _read_emails(path):
+        key = _thread_key(_subject(email))
+        head = heads.get(key)
+        if head is None or email['mailtime'] < head['mailtime']:
+            heads[key] = email
+
+    return [
+        _label_report(path.name, [], email, NOT_FORWARDED_STATE)
+        for email in heads.values()
+    ]
+
+_LABEL_LOADERS = {
+    GLASSWING_LABEL: _load_glasswing_reports,
+    NOT_FORWARDED_LABEL: _load_not_forwarded_reports,
+}
+
+MULTI_THREAD_LABELS = frozenset(_LABEL_LOADERS)
+"""Labels that hold many threads instead of a single report."""
+
 def _load_reports_dir(pmc: str) -> list[Report]:
     d = config.get().data_dir_path / pmc
     threads = list(d.glob('**/*.json'))
 
-    return [ r for r in (load_pmc_report(pmc, t) for t in threads) if r is not None ]
+    result: list[Report] = []
+    for t in threads:
+        # a handful of labels hold many threads instead of a single report
+        loader = _LABEL_LOADERS.get(t.stem)
+        if loader:
+            result.extend(loader(t))
+            continue
+        r = load_pmc_report(pmc, t)
+        if r is not None:
+            result.append(r)
+    return result
 
 async def load_pmc_reports(pmc: str) -> list[Report]:
     if not re.fullmatch(r"[a-z0-9]+", pmc):
