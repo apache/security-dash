@@ -2,7 +2,8 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
-    "python_full_version >= '3.13'",
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
     "python_full_version < '3.13'",
 ]
 
@@ -1281,7 +1282,8 @@ name = "quart"
 version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13'",
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
 ]
 dependencies = [
     { name = "aiofiles" },
@@ -1319,6 +1321,7 @@ name = "security-dashboard-frontend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "asfpy", extra = ["aioldap"] },
     { name = "asfquart" },
     { name = "hypercorn" },
@@ -1332,6 +1335,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp" },
     { name = "asfpy", extras = ["aioldap"] },
     { name = "asfquart", specifier = "~=0.1.12" },
     { name = "hypercorn" },
