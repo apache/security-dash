@@ -17,7 +17,7 @@
 
 """Aggregate statistics across all projects, for the dashboard charts."""
 
-from app import config
+from app import config, reports
 import dataclasses
 import datetime
 import json
@@ -129,6 +129,10 @@ def _project_issue_windows(pmc: str) -> list[IssueWindow]:
     open_dir = data_dir / pmc
     if open_dir.is_dir():
         for path in open_dir.glob("**/*.json"):
+            # these labels collect many threads, so their first and last mail
+            # say nothing about when any single issue was opened or closed
+            if path.stem in reports.MULTI_THREAD_LABELS:
+                continue
             w = _issue_window(old_cve_close_dates, path, closed=False)
             if w is not None:
                 windows.append(w)

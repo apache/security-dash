@@ -246,3 +246,116 @@ def test_reporter_initials_from_name():
 
 def test_reporter_initials_fall_back_to_email_local_part():
     assert Reporter(name='', email='alice@example.com').initials == 'A'
+
+
+def _write_label(pmc_dir, label, emails):
+    pmc_dir.mkdir(parents=True, exist_ok=True)
+    path = pmc_dir / label
+    path.write_text(json.dumps([
+        {
+            "from": "Security Team <security@apache.org>",
+            "to": "security@cassandra.apache.org",
+            **email,
+        }
+        for email in emails
+    ]))
+    return path
+
+
+def test_glasswing_lists_only_unpublished_cves(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-glasswing.json", [
+        {"subj": "CVE-2026-1111 allocated for XSS in the web console",
+         "message_id": "<alloc1@apache.org>", "mailtime": 1700000000},
+        {"subj": "CVE-2026-2222 allocated for path traversal",
+         "message_id": "<alloc2@apache.org>", "mailtime": 1700001000},
+        {"subj": "CVE-2026-1111 was pushed to cve.org",
+         "message_id": "<pushed1@apache.org>", "mailtime": 1700002000},
+    ])
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert [r.cves for r in result] == [["CVE-2026-2222"]]
+    assert result[0].state == reports.GLASSWING_STATE
+    assert result[0].title == "CVE-2026-2222 allocated for path traversal"
+    assert result[0].messageid == "<alloc2@apache.org>"
+    assert result[0].date.isoformat() == "2023-11-14"
+
+
+def test_glasswing_keeps_the_allocating_mail_of_a_cve_mentioned_twice(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-glasswing.json", [
+        {"subj": "CVE-2026-1111 allocated for XSS in the web console",
+         "message_id": "<alloc@apache.org>", "mailtime": 1700000000},
+        {"subj": "Re: CVE-2026-1111 allocated for XSS in the web console",
+         "message_id": "<reply@apache.org>", "mailtime": 1700003000},
+    ])
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert [r.messageid for r in result] == ["<alloc@apache.org>"]
+
+
+def test_glasswing_ignores_mails_without_a_cve(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-glasswing.json", [
+        {"subj": "audit kickoff", "message_id": "<kick@apache.org>", "mailtime": 1700000000},
+    ])
+
+    assert asyncio.run(load_pmc_reports("cassandra")) == []
+
+
+def test_not_forwarded_lists_one_report_per_thread_head(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-non-fwd.json", [
+        {"subj": "Re: a flaw in your project",
+         "message_id": "<reply-a@aisle.com>", "mailtime": 1700002000},
+        {"subj": "a flaw in your project",
+         "message_id": "<head-a@aisle.com>", "mailtime": 1700000000},
+        {"subj": "[SECURITY] another finding",
+         "message_id": "<head-b@aisle.com>", "mailtime": 1700001000},
+        {"subj": "Re: [SECURITY] another finding",
+         "message_id": "<reply-b@aisle.com>", "mailtime": 1700003000},
+    ])
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert {r.messageid for r in result} == {"<head-a@aisle.com>", "<head-b@aisle.com>"}
+    assert {r.state for r in result} == {reports.NOT_FORWARDED_STATE}
+    assert {r.title for r in result} == {"a flaw in your project", "another finding"}
+    assert all(r.cves == [] for r in result)
+
+
+def test_not_forwarded_reports_keep_the_reporter(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-non-fwd.json", [
+        {"subj": "a flaw in your project",
+         "from": "Jane Reporter <jane@aisle.com>",
+         "to": "security@apache.org",
+         "message_id": "<head@aisle.com>", "mailtime": 1700000000},
+    ])
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert result[0].reporter == Reporter(name="Jane Reporter", email="jane@aisle.com")
+
+
+def test_special_labels_are_not_loaded_as_a_single_report(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-glasswing.json", [
+        {"subj": "audit kickoff", "message_id": "<kick@apache.org>", "mailtime": 1700000000},
+    ])
+    _write_report(tmp_path / "cassandra" / "x", "2024-03-01 a flaw wf untriaged.json")
+
+    result = asyncio.run(load_pmc_reports("cassandra"))
+
+    assert [r.security_team_name for r in result] == ["2024-03-01 a flaw wf untriaged.json"]
+
+
+def test_label_with_unusable_mails_is_skipped(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    _write_label(tmp_path / "cassandra", "aaa-non-fwd.json", [
+        {"subj": "no message id here", "mailtime": 1700000000},
+    ])
+
+    assert asyncio.run(load_pmc_reports("cassandra")) == []
