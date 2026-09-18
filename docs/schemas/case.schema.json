@@ -31,7 +31,7 @@
         },
         "subj": {
           "type": "string",
-          "description": "Raw `Subject:` header. May still be RFC 2047 encoded (`=?utf-8?...?=`); consumers decode it. A subject ending in 'was pushed to cve.org' marks the point where the dashboard stops counting the case as open.",
+          "description": "Raw `Subject:` header. May still be RFC 2047 encoded (`=?utf-8?...?=`); consumers decode it.",
           "examples": [
             "[SECURITY] path traversal in the FooServlet",
             "CVE-2026-12345 was pushed to cve.org"
@@ -39,14 +39,14 @@
         },
         "from": {
           "type": "string",
-          "description": "Raw `From:` header, an RFC 5322 address list. When the address is an apache.org list and the display name contains ' via ', the real reporter is in `reply_to` instead.",
+          "description": "Raw `From:` header, an RFC 5322 address list.",
           "examples": [
             "Jane Reporter <jane@example.com>"
           ]
         },
         "to": {
           "type": "string",
-          "description": "Raw `To:` header, an RFC 5322 address list. The first apache.org address found in `to`, then `cc`, identifies the mailing list the email belongs to and hence the lists.apache.org permalink.",
+          "description": "Raw `To:` header, an RFC 5322 address list.",
           "examples": [
             "security@cassandra.apache.org"
           ]
