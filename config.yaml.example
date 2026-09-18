@@ -1,5 +1,9 @@
 data_dir: /path/to/email-classification
 state_dir: ./state
+# CVEs closed before the close date could be derived from the data,
+# kept here so they don't reappear in the statistics
+old_cve_close_dates:
+  CVE-2020-1234: 2021-06-30
 pmcs_using_jira:
   cxf: CXF
   drill: DRILL
