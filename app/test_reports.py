@@ -3,7 +3,7 @@ import json
 import types
 
 from app import reports
-from app.reports import Reporter, _project_link, _reporter, _load_pmc_report, load_pmc_report, load_pmc_reports
+from app.reports import Reporter, ThreadLink, _project_link, _reporter, _load_pmc_report, load_pmc_report, load_pmc_reports
 
 
 def _write_report(path, label, *, subj="[SECURITY] a flaw"):
@@ -246,3 +246,41 @@ def test_reporter_initials_from_name():
 
 def test_reporter_initials_fall_back_to_email_local_part():
     assert Reporter(name='', email='alice@example.com').initials == 'A'
+
+
+def _email(subj, message_id):
+    return {
+        'subj': subj,
+        'from': 'Jane Reporter <jane@aisle.com>',
+        'to': 'security@cassandra.apache.org',
+        'message_id': message_id,
+        'mailtime': 1700000000,
+    }
+
+
+def test_replies_are_not_reported_as_duplicates(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    report = _load_pmc_report("cassandra", "2026-09-09 foo", [], [
+        _email("[SECURITY] a flaw", "<a@aisle.com>"),
+        _email("Re: [SECURITY] a flaw", "<b@cassandra.apache.org>"),
+        _email("RE: Re:  a   FLAW", "<c@cassandra.apache.org>"),
+    ])
+    assert report.duplicates == ()
+
+
+def test_distinct_threads_in_one_report_are_all_linked(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    report = _load_pmc_report("cassandra", "2026-09-09 foo", [], [
+        _email("[SECURITY] SQL injection in search", "<a@aisle.com>"),
+        _email("Possible SQLi found in /search", "<b@example.net>"),
+        _email("Re: Possible SQLi found in /search", "<c@cassandra.apache.org>"),
+        _email("Third report", "<d@example.org>"),
+    ])
+    assert report.title == "SQL injection in search"
+    assert report.link == 'https://lists.apache.org/thread/<a%40aisle.com>?<security.cassandra.apache.org>'
+    assert report.duplicates == (
+        ThreadLink("Possible SQLi found in /search",
+                   'https://lists.apache.org/thread/<b%40example.net>?<security.cassandra.apache.org>'),
+        ThreadLink("Third report",
+                   'https://lists.apache.org/thread/<d%40example.org>?<security.cassandra.apache.org>'),
+    )
