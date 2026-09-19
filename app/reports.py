@@ -56,6 +56,12 @@ class Reporter:
         hue = int(digest[:4], 16) % 360
         return f"hsl({hue}, 55%, 45%)"
 
+@dataclasses.dataclass(frozen=True)
+class ThreadLink:
+    """A mailing list thread that was merged into a report, other than
+       the thread the report is primarily about."""
+    title: str
+    link: str
 
 @dataclasses.dataclass(frozen=True)
 class Report:
@@ -83,6 +89,8 @@ class Report:
     """For PMCs split across subprojects, the subproject this report belongs to."""
 
     timestamp: datetime.datetime
+    duplicates: tuple[ThreadLink, ...] = ()
+    """Other threads collapsed into this report, earliest first."""
 
     @property
     def date(self) -> datetime.date:
@@ -127,6 +135,38 @@ def _project_link(emails):
         if list_addr:
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
     return _ponymail_link(emails[0]['message_id'], "security.apache.org")
+
+def _title(raw_subject: str) -> str:
+    try:
+        title = "".join(
+            s.decode(c or "ascii", errors="replace") if isinstance(s, bytes) else s
+            for s, c in decode_header(raw_subject)
+        )
+    except Exception:
+        title = raw_subject
+    title = title.strip() or "(untitled)"
+    if title.startswith("[SECURITY] "):
+        return title.removeprefix("[SECURITY] ")
+    if title.startswith("[Security] "):
+        return title.removeprefix("[Security] ")
+    return title
+
+_SUBJECT_PREFIX = re.compile(r"^\s*(?:(?:re|fwd?|aw)\s*:\s*|\[security\]\s*)+", re.IGNORECASE)
+
+def _thread_key(title: str) -> str:
+    """Emails with the same key are treated as belonging to the same thread:
+       replies and forwards share the subject of the original message."""
+    return re.sub(r"\s+", " ", _SUBJECT_PREFIX.sub("", title)).strip().casefold()
+
+def _threads(emails) -> list[ThreadLink]:
+    """One entry per distinct thread in the report, earliest first."""
+    groups: dict[str, list] = {}
+    for email in emails:
+        groups.setdefault(_thread_key(_title(email['subj'])), []).append(email)
+    return [
+        ThreadLink(_title(group[0]['subj']), _project_link(group))
+        for group in groups.values()
+    ]
 
 def _reporter(email) -> Reporter | None:
     addresses = [a for a in getaddresses([email.get('from', '')]) if a[1]]
@@ -185,25 +225,16 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         return None
 
     first_email = emails[0]
-    raw_subject = first_email['subj']
-    try:
-        title = "".join(
-            s.decode(c or "ascii", errors="replace") if isinstance(s, bytes) else s
-            for s, c in decode_header(raw_subject)
-        )
-    except Exception:
-        title = raw_subject
-    title = title.strip() or "(untitled)"
-    if title.startswith("[SECURITY] "):
-        title = title.removeprefix("[SECURITY] ")
-    elif title.startswith("[Security] "):
-        title = title.removeprefix("[Security] ")
+    title = _title(first_email['subj'])
 
     apache_list_address = _apache_list_address(first_email)
     if apache_list_address:
         listid = apache_list_address.replace('@', '.')
     else:
         listid = 'security.apache.org'
+
+    link = _project_link(emails)
+    duplicates = tuple(t for t in _threads(emails)[1:] if t.link != link)
 
     return Report(
         name,
@@ -213,11 +244,12 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         title,
         first_email['message_id'],
         listid,
-        _project_link(emails),
+        link,
         _reporter(first_email),
         state,
         subproject,
         datetime.datetime.fromtimestamp(first_email['mailtime'], tz=datetime.timezone.utc),
+        duplicates=duplicates,
     )
 
 def _load_reports_dir(pmc: str) -> list[Report]:
