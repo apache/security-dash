@@ -96,8 +96,9 @@ The next token, when it is a number,
 is the identifier of the issue tracking the case:
 a Jira issue for the PMCs listed in `pmcs_using_jira`,
 a GitHub issue for those listed in `pmcs_using_github`.
-Such an issue has to be private,
-since a public one would disclose the vulnerability —
+Such an issue must not reveal that the case is security-related:
+either it is private,
+or it is public and describes the problem as an ordinary bug —
 see [Work in private](https://www.apache.org/security/committers.html#work-in-private).
 
 #### State
