@@ -87,6 +87,27 @@ Free-form text describing the issue is wrapped in optional tokens:
 All of this follows the default process for handling a possible vulnerability,
 [documented for committers](https://www.apache.org/security/committers.html#possible).
 
+#### Standing labels
+
+A file named `aaa-<topic>.json` or `zzz-<topic>.json` is not a case
+but a standing label of the project,
+collecting every email on one recurring topic.
+The `aaa-` labels gather reports that are not handled as cases:
+for example `aaa-dependencies` for questions about dependencies,
+`aaa-support` for support requests,
+`aaa-glasswing` for the reports of the Glasswing scans
+and `aaa-non-fwd` for emails that were not forwarded to the project.
+The `zzz-` labels hold discussions with the project team that concern no open case,
+such as `zzz-admin`.
+The set of topics is not fixed;
+the prefixes merely sort these labels before and after the cases.
+
+The dashboard does not treat them specially.
+While such a file sits in the project directory,
+the project page shows it as an untriaged case named after its first email,
+and the statistics count it as open;
+once it is moved to a closed tree, the statistics ignore it.
+
 #### Prefix
 
 Once the case has CVE IDs
