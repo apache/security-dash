@@ -58,6 +58,23 @@ and stops adding to the project's debt in the statistics
 from the date of its last email onwards —
 or, if its CVE is listed in `old_cve_close_dates`, from the date given there.
 
+ASF Security moves closed cases into one of two trees that mirror the per-project layout:
+
+```
+<data_dir>/
+  zzz-resolved/<project>/*.json    accepted cases, once resolved
+  zzz-non-issue/<project>/*.json   rejected cases
+  archive/                         older closed cases, in the same two trees
+```
+
+Only the statistics read these trees 
+to find out when each case was closed:
+the date of its last email,
+not counting follow-ups sent after its CVE was published.
+
+To reopen a case, ASF Security moves its file back into the project directory,
+and the dashboard shows it as open again.
+
 ### File names
 
 The name of a case file records how the case was classified.
