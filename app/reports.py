@@ -201,7 +201,7 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
     if cves:
         state = "confirmed"
     else:
-        m = re.match(r".*wf (.*).json", name)
+        m = re.match(r".*wf (.*)", name)
         if not m:
             state = "untriaged"
         elif m.groups()[0] == "cve-allocation":
