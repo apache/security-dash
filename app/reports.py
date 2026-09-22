@@ -68,7 +68,7 @@ class Report:
     jira: str
     """If this project tracks security issues in private jira issues, the Jira ID"""
     title: str
-    messageid: str
+    message_id: str
     """message_id of the first email in the thread."""
     listid: str
     """list id of the first email in the thread."""
@@ -96,7 +96,7 @@ class Report:
 
     @property
     def asf_member_link(self) -> str:
-        return _ponymail_link(self.messageid, self.listid)
+        return _ponymail_link(self.message_id, self.listid)
 
 def _known_bad_address(time: str | None, address: str):
     if time:
@@ -117,9 +117,9 @@ def _apache_list_address(email):
             return address
     return None
 
-def _ponymail_link(messageid, listid):
-    partly_encoded_messageid = messageid.replace(' ', '+').replace('+', '%2B').replace('=', '%3D').replace('@', '%40')
-    return f"https://lists.apache.org/thread/{partly_encoded_messageid}?<{listid}>"
+def _ponymail_link(message_id, listid):
+    partly_encoded_message_id = message_id.replace(' ', '+').replace('+', '%2B').replace('=', '%3D').replace('@', '%40')
+    return f"https://lists.apache.org/thread/{partly_encoded_message_id}?<{listid}>"
 
 def _project_link(emails):
     for email in emails[:5]:
@@ -147,7 +147,7 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     m = re.match(r"(?:CVE-\S+\s+)*CVE-\S+", path.name)
     cves = m.group(0).split() if m else []
 
-    return _load_pmc_report(pmc, path.name, cves, emails)
+    return _load_pmc_report(pmc, path.name[:-5], cves, emails)
 
 def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object]) -> Report | None:
     jira = None

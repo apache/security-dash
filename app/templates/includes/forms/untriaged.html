@@ -1,0 +1,63 @@
+{# Triage form for an untriaged report. The PMC picks a decision and writes the
+   feedback; both are handed to the notification API, which sends the email
+   previewed here. The static parts come from triage.message_preview(). #}
+{% set preview = message_preview(project_name, report, current_user.fullname or current_user.uid) %}
+<details class="triage">
+  <summary>Triage</summary>
+  <form method="post"
+        action="{{ url_for('client.project_triage_api', project=project_name) }}">
+    <input type="hidden" name="tag" value="{{ report.security_team_name }}" />
+    <input type="hidden" name="message_id" value="{{ report.message_id }}" />
+
+    <p>
+      Determine whether the issue you're triaging is a vulnerability:
+    </p>
+    <ul>
+      <li>Can it be exploited by an attacker?
+      <li>Does it impact Confidentiality, Integrity or Availability?
+      <li>Is it surprising given your security model?
+    </ul>
+    <p>
+      See also <a href="https://cwiki.apache.org/confluence/display/SECURITY/For+what+issues+to+create+advisories">For what issues to create advisories</a> and <a href="https://cwiki.apache.org/confluence/display/SECURITY/Documenting+your+security+model">Documenting your security model</a>.
+    </p>
+    <fieldset class="triage-decision">
+      <legend>Is this a vulnerability?</legend>
+      <label>
+        <input type="radio" name="action" value="accept" required />
+        Yes, this is a vulnerability
+      </label>
+      <label>
+        <input type="radio" name="action" value="reject" />
+        No, this is not a vulnerability
+      </label>
+    </fieldset>
+
+    <div class="triage-preview">
+      <dl class="triage-headers">
+        <dt>To</dt><dd>{{ preview.to }}</dd>
+        <dt>Cc</dt><dd>{{ preview.cc|join(', ') }}</dd>
+        <dt>Subject</dt><dd>{{ preview.subject }}</dd>
+      </dl>
+      <div class="triage-body">
+        <p>{{ preview.salutation }}</p>
+        <p>
+	  <span>{{ preview.opening }}</span>
+	  <span class="triage-if-accept">{{ preview.decisions['accept'] }}</span>
+          <span class="triage-if-reject">{{ preview.decisions['reject'] }}</span>
+	</p>
+        <label class="triage-feedback">
+          <textarea name="feedback"
+                    rows="5"
+                    maxlength="{{ max_feedback_length }}"
+                    placeholder="Optionally add additional comments for the reporter here"
+                    aria-label="Optional additional comments for the reporter"></textarea>
+        </label>
+        <p class="triage-closing">{{ preview.closing }}</p>
+      </div>
+    </div>
+
+    <div class="triage-actions">
+      <button type="submit">Submit decision</button>
+    </div>
+  </form>
+</details>

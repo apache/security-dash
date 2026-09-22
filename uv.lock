@@ -1549,6 +1549,7 @@ name = "security-dashboard-frontend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "asfpy", extra = ["aioldap"] },
     { name = "asfquart" },
     { name = "hypercorn" },
@@ -1562,6 +1563,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp" },
     { name = "asfpy", extras = ["aioldap"] },
     { name = "asfquart", git = "https://github.com/raboof/infrastructure-asfquart?rev=oauth-support-client-id-and-secret" },
     { name = "hypercorn" },

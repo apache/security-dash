@@ -12,6 +12,10 @@ pmcs_with_security_emails:
   - ambari
 pmcs_with_subprojects:
   - commons
+# PMCs that take their triage decisions here; a decision mails the reporter,
+# so a PMC is only listed once it has asked for it
+pmcs_with_triage:
+  - cassandra
 # Retired PMCs whose reports the security team handles directly;
 # committee ids from https://projects.apache.org/json/foundation/committees-retired.json
 pmcs_in_attic:

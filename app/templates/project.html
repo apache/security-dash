@@ -29,9 +29,17 @@ If you see anything that seems incorrect, email
 <center><p id="debt-chart-status">Security debt is the cumulative ages of open issues in days, plus a constant ({{ debt_constant }}) per open issue.</p></center>
 
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <p class="banner banner-{{ category }}">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 <h2>Reports</h2>
 {% if sections %}
-  {% for title, description, reports in sections %}
+  {% for title, description, form_template, reports in sections %}
     <h3>{{ title }}
       {% if reports|length > 5 %}
       ({{ reports|length }})
@@ -62,7 +70,7 @@ If you see anything that seems incorrect, email
               <div><a href="https://cveprocess.apache.org/cve5/{{cve}}">{{ cve }}</a></div>
             {%- endfor -%}
             {%- if report.state == 'confirmed' and not report.cves -%}
-              <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}&amp;messageid={{ report.messageid|urlencode }}&amp;listid={{ report.listid|urlencode }}">allocate CVE</a></div>
+              <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}&amp;messageid={{ report.message_id|urlencode }}&amp;listid={{ report.listid|urlencode }}">allocate CVE</a></div>
             {%- endif -%}
           </td>
           <td class="reports-reporter">
@@ -75,6 +83,11 @@ If you see anything that seems incorrect, email
           <td class="reports-title">
             <a href="{{ report.link }}" title="{{ report.title }}">{{ report.title }}</a>
           </td>
+          {% if form_template %}
+          <td class="reports-triage">
+            {% include form_template %}
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -103,4 +116,5 @@ If you see anything that seems incorrect, email
   {{ super() }}
   <script src="/assets/js/echarts.min.js"></script>
   <script src="/assets/js/debt-chart.js"></script>
+  <script src="/assets/js/triage.js"></script>
 {% endblock javascripts %}
