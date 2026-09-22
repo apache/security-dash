@@ -78,6 +78,8 @@ _STATE_TITLES: dict[str, str] = {
 }
 _STATE_DESCRIPTIONS: dict[str, str] = {
     "untriaged": "Triage of incoming security reports should happen fairly quickly, because it's the phase in which the PMC decides whether this is an urgent issue. Triage is complete when the PMC decides whether issue is a vulnerability and provides that feedback to the reporter.",
+    "reporter": "The PMC or Security Team has requested further information from the reporter. If these details do not appear, you can provide feedback to the reporter that since we haven't received the information the report is not actionable for us, and we have to close it, but we would be happy to reopen when they do provide the requested information",
+    "non-issue-feedback": "The PMC has tentatively decided the report doesn't describe a vulnerability, but hasn't made that decision final yet by responding to the reporter",
     "confirmed": "The PMC has accepted and is working on these issues. For those that don't have CVEs allocated yet, this can be done now",
     "disclosure": "A fix for these issues has been released. When you are happy with the advisory in the cveprocess tool, you can send them by moving the state to READY and using the 'Send these Emails' button on the 'OSS/ASF Emails' tab in cveprocess.",
     "non-issue-upstream": "Make sure the issue is fixed upstream and a release is made with the fix, or find an alternative to the problematic upstream component",
