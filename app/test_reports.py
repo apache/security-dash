@@ -278,7 +278,7 @@ def test_glasswing_lists_only_unpublished_cves(tmp_path, monkeypatch):
     assert [r.cves for r in result] == [["CVE-2026-2222"]]
     assert result[0].state == reports.GLASSWING_STATE
     assert result[0].title == "CVE-2026-2222 allocated for path traversal"
-    assert result[0].messageid == "<alloc2@apache.org>"
+    assert result[0].message_id == "<alloc2@apache.org>"
     assert result[0].date.isoformat() == "2023-11-14"
 
 
@@ -293,7 +293,7 @@ def test_glasswing_keeps_the_allocating_mail_of_a_cve_mentioned_twice(tmp_path, 
 
     result = asyncio.run(load_pmc_reports("cassandra"))
 
-    assert [r.messageid for r in result] == ["<alloc@apache.org>"]
+    assert [r.message_id for r in result] == ["<alloc@apache.org>"]
 
 
 def test_glasswing_ignores_mails_without_a_cve(tmp_path, monkeypatch):
@@ -320,7 +320,7 @@ def test_not_forwarded_lists_one_report_per_thread_head(tmp_path, monkeypatch):
 
     result = asyncio.run(load_pmc_reports("cassandra"))
 
-    assert {r.messageid for r in result} == {"<head-a@aisle.com>", "<head-b@aisle.com>"}
+    assert {r.message_id for r in result} == {"<head-a@aisle.com>", "<head-b@aisle.com>"}
     assert {r.state for r in result} == {reports.NOT_FORWARDED_STATE}
     assert {r.title for r in result} == {"a flaw in your project", "another finding"}
     assert all(r.cves == [] for r in result)
