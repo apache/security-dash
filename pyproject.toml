@@ -7,7 +7,8 @@ requires-python = ">= 3.12"
 
 dependencies = [
   "asfpy[aioldap]",
-  "asfquart~=0.1.12",
+  # https://github.com/apache/infrastructure-asfquart/pull/107
+  "asfquart @ git+https://github.com/raboof/infrastructure-asfquart@oauth-support-client-id-and-secret",
   "hypercorn",
   "pydantic~=2.11",
 ]
