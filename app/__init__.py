@@ -59,10 +59,16 @@ def _state_sort_key(state: str) -> tuple[int, str]:
         return (3, "")
     elif state.startswith("non-issue"):
         return (4, state)
+    elif state == reports.GLASSWING_STATE:
+        return (5, "")
+    elif state == reports.NOT_FORWARDED_STATE:
+        return (6, "")
     else:
         return (2, state)
 
 _STATE_TITLES: dict[str, str] = {
+    reports.NOT_FORWARDED_STATE: "Not forwarded to the PMC yet",
+    reports.GLASSWING_STATE: "Audit",
     "untriaged": "Untriaged",
     "confirmed": "Confirmed",
     "disclosure": "Waiting for disclosure",
@@ -75,6 +81,8 @@ _STATE_DESCRIPTIONS: dict[str, str] = {
     "confirmed": "The PMC has accepted and is working on these issues. For those that don't have CVEs allocated yet, this can be done now",
     "disclosure": "A fix for these issues has been released. When you are happy with the advisory in the cveprocess tool, you can send them by moving the state to READY and using the 'Send these Emails' button on the 'OSS/ASF Emails' tab in cveprocess.",
     "non-issue-upstream": "Make sure the issue is fixed upstream and a release is made with the fix, or find an alternative to the problematic upstream component",
+    reports.GLASSWING_STATE: "CVEs allocated as part of an internal audit rather than reported independently.",
+    reports.NOT_FORWARDED_STATE: "Reports the security team received about this project but has not forwarded to the PMC, because earlier reports from the same reporter were of particularly low quality. Ask security@apache.org if you want one of these forwarded anyway",
 }
 
 def _state_title(state: str) -> str:
