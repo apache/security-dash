@@ -70,6 +70,12 @@ class Reporter:
         hue = int(digest[:4], 16) % 360
         return f"hsl({hue}, 55%, 45%)"
 
+@dataclasses.dataclass(frozen=True)
+class ThreadLink:
+    """A mailing list thread that was merged into a report, other than
+       the thread the report is primarily about."""
+    title: str
+    link: str
 
 @dataclasses.dataclass(frozen=True)
 class Report:
@@ -97,6 +103,8 @@ class Report:
     """For PMCs split across subprojects, the subproject this report belongs to."""
 
     timestamp: datetime.datetime
+    duplicates: tuple[ThreadLink, ...] = ()
+    """Other threads collapsed into this report, earliest first."""
 
     @property
     def date(self) -> datetime.date:
@@ -160,6 +168,16 @@ def _title(email) -> str:
     elif title.startswith("[Security] "):
         title = title.removeprefix("[Security] ")
     return title
+
+def _threads(emails) -> list[ThreadLink]:
+    """One entry per distinct thread in the report, earliest first."""
+    groups: dict[str, list] = {}
+    for email in emails:
+        groups.setdefault(_thread_key(_title(email)), []).append(email)
+    return [
+        ThreadLink(_title(group[0]), _project_link(group))
+        for group in groups.values()
+    ]
 
 def _reporter(email) -> Reporter | None:
     addresses = [a for a in getaddresses([email.get('from', '')]) if a[1]]
@@ -226,6 +244,9 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
     else:
         listid = 'security.apache.org'
 
+    link = _project_link(emails)
+    duplicates = tuple(t for t in _threads(emails)[1:] if t.link != link)
+
     return Report(
         name,
         cves,
@@ -234,11 +255,12 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         title,
         first_email['message_id'],
         listid,
-        _project_link(emails),
+        link,
         _reporter(first_email),
         state,
         subproject,
         datetime.datetime.fromtimestamp(first_email['mailtime'], tz=datetime.timezone.utc),
+        duplicates=duplicates,
     )
 
 def _read_emails(path: pathlib.Path) -> list[object]:

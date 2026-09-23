@@ -82,6 +82,16 @@ If you see anything that seems incorrect, email
           </td>
           <td class="reports-title">
             <a href="{{ report.link }}" title="{{ report.title }}">{{ report.title }}</a>
+            {% if report.duplicates %}
+            <details class="reports-duplicates">
+              <summary>+{{ report.duplicates|length }} more thread{{ 's' if report.duplicates|length > 1 else '' }}</summary>
+              <ul>
+                {% for dup in report.duplicates %}
+                <li><a href="{{ dup.link }}" title="{{ dup.title }}">{{ dup.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </details>
+            {% endif %}
           </td>
           {% if form_template %}
           <td class="reports-triage">

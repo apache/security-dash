@@ -185,6 +185,28 @@ footer p {
   white-space: nowrap;
 }
 
+.reports-duplicates {
+  margin-top: 2px;
+  font-size: 0.85em;
+}
+
+.reports-duplicates summary {
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.reports-duplicates ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding-left: 1rem;
+}
+
+.reports-duplicates li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .congrats {
   font-size: 2em;
 }
