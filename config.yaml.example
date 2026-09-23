@@ -1,5 +1,9 @@
 data_dir: /path/to/email-classification
 state_dir: ./state
+# CVEs closed before the close date could be derived from the data,
+# kept here so they don't reappear in the statistics
+old_cve_close_dates:
+  CVE-2020-1234: 2021-06-30
 pmcs_using_jira:
   cxf: CXF
   drill: DRILL
@@ -8,6 +12,10 @@ pmcs_with_security_emails:
   - ambari
 pmcs_with_subprojects:
   - commons
+# PMCs that take their triage decisions here; a decision mails the reporter,
+# so a PMC is only listed once it has asked for it
+pmcs_with_triage:
+  - cassandra
 # Retired PMCs whose reports the security team handles directly;
 # committee ids from https://projects.apache.org/json/foundation/committees-retired.json
 pmcs_in_attic:
@@ -106,3 +114,20 @@ pmcs_in_attic:
   - wink
   - wookie
   - xmlbeans
+
+# for local testing with mock-oauth2-server
+#oauth_url_init: http://localhost:8080/default/authorize
+#oauth_client_id: example-app
+#oauth_client_secret: ZXhhbXBsZS1hcHAtc2VjcmV0
+#oauth_url_callback: http://localhost:8080/default/token
+#oauth_issuer: http://localhost:8080/default
+#oauth_enforce_https: false
+
+# for local testing with https://mfa-dev.apache.org
+oauth_url_init: https://mfa-dev.apache.org/application/o/authorize/
+oauth_client_id: local_testing.apache.org
+oauth_client_secret: (ask)
+oauth_url_callback: https://mfa-dev.apache.org/application/o/token/
+oauth_url_logout: https://mfa-dev.apache.org/application/o/local_testing-apache-org/end-session/
+oauth_issuer: https://mfa-dev.apache.org/application/o/local_testing-apache-org/
+oauth_enforce_https: false

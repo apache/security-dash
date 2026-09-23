@@ -151,3 +151,18 @@ def test_compute_debt_chart_end_to_end(tmp_path, monkeypatch):
     assert {s["name"] for s in restricted["series"]} == {"proj1"}
     # an empty allow-list yields no series
     assert statistics.compute_debt_chart(now=now, weeks=52, pmcs=[])["series"] == []
+
+
+def test_multi_thread_labels_do_not_count_as_open_issues(tmp_path, monkeypatch):
+    # aaa-glasswing and aaa-non-fwd hold many threads; counting either as a
+    # single open issue would skew a project's debt
+    _write_thread(tmp_path / "proj1" / "open.json", datetime.date(2026, 1, 1))
+    _write_thread(tmp_path / "proj1" / "aaa-glasswing.json", datetime.date(2024, 1, 1))
+    _write_thread(tmp_path / "proj1" / "aaa-non-fwd.json", datetime.date(2024, 1, 1))
+
+    fake_cfg = types.SimpleNamespace(data_dir_path=tmp_path, old_cve_close_dates=[])
+    monkeypatch.setattr(statistics.config, "get", lambda: fake_cfg)
+
+    assert statistics._project_issue_windows("proj1") == [
+        IssueWindow(datetime.date(2026, 1, 1), None)
+    ]
