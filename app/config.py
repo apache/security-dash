@@ -60,6 +60,12 @@ class AppConfig(pydantic.BaseModel):
     without its id here, the project view shows no triage form and the triage
     endpoint refuses the project."""
 
+    pmcs_with_failing_moderation: list[str] = []
+    """PMCs whose lists fail moderation. In that case reports may not
+    get moderated in, timeout, and get dropped. For those reports we
+    show 'member' links (which are more reliable) rather than the
+    'project' links"""
+
     pmcs_in_attic: list[str] = []
     """PMCs retired to the Attic, whose reports the security team handles directly"""
 

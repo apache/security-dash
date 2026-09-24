@@ -150,6 +150,17 @@ def _project_link(emails):
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
     return _ponymail_link(emails[0]['message_id'], "security.apache.org")
 
+def _safe_link(emails):
+    """link that is likely correct even if the PMC is failing to moderate some emails"""
+    email = emails[0]
+    addresses = list(getaddresses([email['to']]))
+    if 'cc' in email:
+        addresses.extend(getaddresses([email['cc']]))
+    for _, address in addresses:
+        if address.startswith("security") and address.endswith(".apache.org"):
+            return _ponymail_link(emails[0]['message_id'], "security.apache.org")
+    return _project_link(emails)
+
 def _subject(email) -> str:
     raw_subject = email.get('subj', '')
     try:
@@ -169,13 +180,13 @@ def _title(email) -> str:
         title = title.removeprefix("[Security] ")
     return title
 
-def _threads(emails) -> list[ThreadLink]:
+def _threads(emails, link_fn) -> list[ThreadLink]:
     """One entry per distinct thread in the report, earliest first."""
     groups: dict[str, list] = {}
     for email in emails:
         groups.setdefault(_thread_key(_title(email)), []).append(email)
     return [
-        ThreadLink(_title(group[0]), _project_link(group))
+        ThreadLink(_title(group[0]), link_fn(group))
         for group in groups.values()
     ]
 
@@ -244,8 +255,13 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
     else:
         listid = 'security.apache.org'
 
-    link = _project_link(emails)
-    duplicates = tuple(t for t in _threads(emails)[1:] if t.link != link)
+    if pmc in config.get().pmcs_with_failing_moderation:
+        link_fn = _safe_link
+    else:
+        link_fn = _project_link
+
+    link = link_fn(emails)
+    duplicates = tuple(t for t in _threads(emails, link_fn)[1:] if t.link != link)
 
     return Report(
         name,
