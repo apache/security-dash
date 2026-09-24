@@ -16,6 +16,10 @@ pmcs_with_subprojects:
 # so a PMC is only listed once it has asked for it
 pmcs_with_triage:
   - cassandra
+# PMCs whose lists fail moderation, so the report links always
+# point at the 'member' links rather than the 'project' links
+pmcs_with_failing_moderation:
+  - example
 # Retired PMCs whose reports the security team handles directly;
 # committee ids from https://projects.apache.org/json/foundation/committees-retired.json
 pmcs_in_attic:

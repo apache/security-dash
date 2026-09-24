@@ -62,6 +62,7 @@ def _full_config(tmp_path, pmcs_in_attic=()):
         pmcs_in_attic=list(pmcs_in_attic),
         pmcs_using_jira={},
         pmcs_using_github={},
+        pmcs_with_failing_moderation=[],
     )
 
 
