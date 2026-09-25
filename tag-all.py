@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # Requirements:
 #  wget https://raw.githubusercontent.com/google/gmail-oauth2-tools/master/python/oauth2.py
