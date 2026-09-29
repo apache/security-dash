@@ -5,7 +5,7 @@
 <details class="triage">
   <summary>Triage</summary>
   <form method="post"
-        action="{{ url_for('client.project_triage_api', project=project_name) }}">
+        action="{{ url_for('client.project_triage_api', project=project_name, view=triage_view|default(none)) }}">
     <input type="hidden" name="tag" value="{{ report.security_team_name }}" />
     <input type="hidden" name="message_id" value="{{ report.message_id }}" />
 

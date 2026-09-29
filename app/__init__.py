@@ -112,7 +112,10 @@ async def _require_authorization_for(project: str) -> utils.UserSession:
         raise asfquart.auth.AuthenticationFailed(asfquart.auth.Requirements.E_NOT_LOGGED_IN)
     pmcs = user.accessible_pmcs
     if (not _asf_group_acl(project, pmcs, user.projects)
-        and not _asf_group_acl("security", pmcs, user.projects)):
+        and not _asf_group_acl("security", pmcs, user.projects)
+        # the Incubator PMC oversees its podlings
+        and not (project in config.get().pmcs_in_incubator
+                 and _asf_group_acl("incubator", pmcs, user.projects))):
         raise asfquart.auth.AuthenticationFailed(f"You are not a member of the {project} PMC.")
     return user
 
@@ -163,22 +166,22 @@ async def _audit_access(project: str):
 
     print(f"User {user.uid} accessed project {project}{mark}")
 
-def _sections(r: list[reports.Report], triage_project: str | None = None) -> list[tuple[str, str, str, str | None, list[reports.Report]]]:
-    """Reports grouped by state, with the triage form to show if `triage_project` is given."""
+def _sections(project: str, r: list[reports.Report]) -> list[tuple[str, str, str, str | None, list[reports.Report]]]:
+    """Reports grouped by state, with the form to show for each state, if any."""
     states = sorted(dict.fromkeys(report.state for report in r), key=_state_sort_key)
     return [
         (
             state,
             _state_title(state),
             _state_description(state),
-            triage.form_template(triage_project, state) if triage_project else None,
+            triage.form_template(project, state),
             [report for report in r if report.state == state],
         )
         for state in states
     ]
 
 async def _incubator(podlings: list[str]):
-    podling_sections = {podling: _sections(await reports.load_pmc_reports(podling)) for podling in podlings}
+    podling_sections = {podling: _sections(podling, await reports.load_pmc_reports(podling)) for podling in podlings}
     untriaged = {
         podling: [report for state, _, _, _, r in sections if state == "untriaged" for report in r]
         for podling, sections in podling_sections.items()
@@ -191,6 +194,8 @@ async def _incubator(podlings: list[str]):
              for podling, r in untriaged.items()),
             key=lambda row: (-row[1], -row[2], row[0])),
         podling_sections=podling_sections,
+        max_feedback_length=triage.MAX_FEEDBACK_LENGTH,
+        message_preview=triage.message_preview,
         pmcs_with_subprojects=config.get().pmcs_with_subprojects)
 
 @CLIENT.route("/project/<project>")
@@ -203,7 +208,7 @@ async def project(project: str):
     return await quart.render_template("project.html",
         project_name=project,
         debt_constant=statistics.DEBT_CONSTANT,
-        sections=_sections(r, triage_project=project),
+        sections=_sections(project, r),
         max_feedback_length=triage.MAX_FEEDBACK_LENGTH,
         message_preview=triage.message_preview,
         show_subproject=project in config.get().pmcs_with_subprojects or project == "security")
@@ -283,7 +288,13 @@ async def _triage_response(project: str, message: str, category: str, status: in
     if _wants_json():
         return quart.jsonify({"status": category, "message": message, **details}), status
     await quart.flash(message, category)
-    return quart.redirect(quart.url_for("client.project", project=project), code=303)
+    return quart.redirect(_triage_view(project), code=303)
+
+def _triage_view(project: str) -> str:
+    """The page a triage form returns to: the incubator page for a podling triaged from there, else the project's own."""
+    if quart.request.args.get("view") == "incubator" and project in config.get().pmcs_in_incubator:
+        return quart.url_for("client.project", project="incubator")
+    return quart.url_for("client.project", project=project)
 
 def _register_routes(quart_app: asfquart.base.QuartApp) -> None:
     quart_app.register_blueprint(CLIENT)

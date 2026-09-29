@@ -18,6 +18,14 @@ If you see anything that seems incorrect, email
 <a href="mailto:security@apache.org">security@apache.org</a>
 </p>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <p class="banner banner-{{ category }}">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 <h2>Summary</h2>
 <table class="reports-table incubator-table sortable-table">
   <thead>
@@ -49,7 +57,8 @@ If you see anything that seems incorrect, email
   {% if sections %}
     {% with project_name=podling,
              show_subproject=podling in pmcs_with_subprojects,
-             anchor_prefix=podling ~ "-" %}
+             anchor_prefix=podling ~ "-",
+             triage_view="incubator" %}
       {% include "includes/reports.html" %}
     {% endwith %}
   {% else %}
@@ -61,4 +70,5 @@ If you see anything that seems incorrect, email
 {% block javascripts %}
   {{ super() }}
   <script src="/assets/js/sortable-table.js"></script>
+  <script src="/assets/js/triage.js"></script>
 {% endblock javascripts %}

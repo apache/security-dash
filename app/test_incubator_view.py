@@ -20,7 +20,7 @@
 import pytest
 import re
 
-from app.test_project_view import _CONFIG, _build_app, _login, _write_report, sync
+from app.test_project_view import MESSAGE_ID, _CONFIG, _build_app, _login, _write_report, notification_api, sync
 
 _PODLINGS = """\
 pmcs_in_incubator: [alpha, beta, gamma, delta]
@@ -82,12 +82,46 @@ async def test_podling_reports_are_listed_under_anchors(quart_app, monkeypatch):
     assert "No open security reports." in body[body.index('<h2 id="delta">'):]
 
 
+_TRIAGE_FORM = {"message_id": MESSAGE_ID, "action": "accept", "tag": "2024-03-01 a flaw", "feedback": "agreed"}
+
+
 @sync
-async def test_incubator_view_has_no_triage_forms(quart_app, monkeypatch):
-    """Triage is authorized per podling, so it is done from the podling's own page."""
+async def test_incubator_view_has_triage_forms_that_return_to_it(quart_app, monkeypatch):
     body = await _incubator_page(quart_app, monkeypatch)
 
-    assert "/triage" not in body
+    assert 'action="/api/project/alpha/triage?view=incubator"' in body
+    assert '<script src="/assets/js/triage.js"></script>' in body
+
+
+@sync
+async def test_incubator_member_triages_a_podling(quart_app, monkeypatch, notification_api):
+    _login(monkeypatch, committees=("incubator",))
+    client = quart_app.test_client()
+    response = await client.post("/api/project/alpha/triage?view=incubator", form=_TRIAGE_FORM)
+
+    assert response.status_code == 303
+    assert response.headers["Location"].endswith("/project/incubator")
+    assert [(d.project, d.uid) for d in notification_api.decisions] == [("alpha", "jdoe")]
+    body = await (await client.get("/project/incubator")).get_data(as_text=True)
+    assert '<p class="banner banner-success">' in body
+
+
+@sync
+async def test_incubator_member_opens_podling_pages(quart_app, monkeypatch):
+    _login(monkeypatch, committees=("incubator",))
+    client = quart_app.test_client()
+
+    assert (await client.get("/project/alpha")).status_code == 200
+    # ...but not those of other projects
+    assert (await client.get("/project/cassandra")).status_code != 200
+
+
+@sync
+async def test_view_is_ignored_outside_the_incubator(quart_app, monkeypatch):
+    _login(monkeypatch, committees=("cassandra",))
+    response = await quart_app.test_client().post("/api/project/cassandra/triage?view=incubator", form=_TRIAGE_FORM)
+
+    assert response.headers["Location"].endswith("/project/cassandra")
 
 
 @sync
