@@ -126,7 +126,7 @@ def reject_email(rejection: RejectReport, report: dict):
 
     res.set_content(f'''Hello,
 
-Thank you for your report. The PMC has determined that the issue you reported is not a vulnerability in {project}.
+Thank you for your report. The PMC has determined that the issue you reported is NOT a vulnerability in {project}.
 {additional_comment}
 
 Kind regards,
