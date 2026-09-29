@@ -25,9 +25,6 @@ dashboard entirely).
 Which form a report gets, and which actions that form may submit, depend on the
 state the report is in: both live in `_STATE_FORMS` below, so adding a form for
 another state is a matter of adding an entry and a template.
-
-Triage is opt-in per PMC (`pmcs_with_triage` in the config), since a decision
-mails the reporter: `enabled_for` gates both the form and the endpoint.
 """
 
 from app import config
@@ -146,17 +143,8 @@ class TriageError(Exception):
 class TriageUnavailable(Exception):
     """The decision was valid, but could not be handed to the notification API."""
 
-def enabled_for(project: str) -> bool:
-    """Whether `project` takes its triage decisions through this dashboard."""
-    return project in config.get().pmcs_with_triage
-
 def form_template(project: str, state: str) -> str | None:
-    """The form to show for a report of `project` in `state`.
-
-    None when the project has not asked for triage, or the state has no form.
-    """
-    if not enabled_for(project):
-        return None
+    """The form to show for a report of `project` in `state`."""
     form = _STATE_FORMS.get(state)
     return form.template if form else None
 
@@ -193,9 +181,6 @@ def parse_decision(
     payload, so a decision can only ever apply to a report of the project the
     user was authorized for, in a state that has a form.
     """
-    if not enabled_for(project):
-        raise TriageError(f"{project} does not take triage decisions here", status=404)
-
     message_id = _required_string(payload, "message_id")
     tag = _required_string(payload, "tag")
     raw_action = _required_string(payload, "action")

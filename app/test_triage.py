@@ -45,7 +45,7 @@ def _report(message_id="<abc@cassandra.apache.org>", state="untriaged"):
 
 def _config(monkeypatch, **overrides):
     """Config with triage on for cassandra, unless a test says otherwise."""
-    settings = {"pmcs_with_triage": ["cassandra"], "pmcs_with_security_emails": []}
+    settings = {"pmcs_with_security_emails": []}
     settings.update(overrides)
     monkeypatch.setattr(triage.config, "get", lambda: types.SimpleNamespace(**settings))
 
@@ -134,24 +134,6 @@ def test_untriaged_has_a_form_and_other_states_do_not():
     assert triage.form_template("cassandra", "untriaged") == "includes/forms/untriaged.html"
     assert triage.form_template("cassandra", "confirmed") is None
     assert triage.form_template("cassandra", "non-issue-docs") is None
-
-
-def test_a_project_that_has_not_asked_for_triage_gets_no_form(monkeypatch):
-    _config(monkeypatch, pmcs_with_triage=["kafka"])
-    assert triage.form_template("cassandra", "untriaged") is None
-
-
-def test_triage_is_off_for_a_project_that_has_not_asked_for_it(monkeypatch):
-    _config(monkeypatch, pmcs_with_triage=["kafka"])
-    assert not triage.enabled_for("cassandra")
-    assert triage.enabled_for("kafka")
-
-
-def test_a_decision_for_a_project_that_has_not_asked_for_triage_is_refused(monkeypatch):
-    _config(monkeypatch, pmcs_with_triage=[])
-    with pytest.raises(TriageError) as e:
-        _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw"})
-    assert e.value.status == 404
 
 
 class _FakeResponse:

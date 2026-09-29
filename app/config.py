@@ -53,13 +53,6 @@ class AppConfig(pydantic.BaseModel):
     pmcs_with_subprojects: list[str] = []
     """PMCs whose reports are split across subprojects."""
 
-    pmcs_with_triage: list[str] = []
-    """PMCs that take their triage decisions through this dashboard.
-
-    A decision emails the reporter, so triage is off until a PMC asks for it:
-    without its id here, the project view shows no triage form and the triage
-    endpoint refuses the project."""
-
     pmcs_in_attic: list[str] = []
     """PMCs retired to the Attic, whose reports the security team handles directly"""
 
