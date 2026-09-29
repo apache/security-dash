@@ -18,6 +18,7 @@
 import logging
 import email
 from email.message import EmailMessage
+from email.utils import parseaddr
 import re
 from typing import Final
 
@@ -84,22 +85,20 @@ def accept_email(acceptance: AcceptReport, report: dict):
     else:
         additional_comment = "";
 
+    reporter, _ = parseaddr(report.get("reply_to") or report["from"])
+
     # TODO lookup project name mapping
     project = f"Apache {pmc.capitalize()}"
 
     if pmc in config.get().pmcs_with_security_emails:
-        signatory = f"{acceptance.sender_name} on behalf of the {project} Security Team"
+        signatory = f"{acceptance.sender_name}\nSecurity Team member for {project}"
     else:
-        signatory = f"{acceptance.sender_name} on behalf of the {project} PMC"
+        signatory = f"{acceptance.sender_name}\nPMC member for {project}"
 
-    res.set_content(f'''Hello,
+    res.set_content(f'''Dear {reporter},
 
-Thank you for your report. We have decided to accept it
-and will be working on a fix.
+Thank you for your report.  The PMC has confirmed the issue you reported as a vulnerability and is working on a fix. You will be notified once a release containing the fix is available, and are asked to keep the report confidential until then.
 {additional_comment}
-Please keep this information private. After the version
-with the version with the fix has been released, we will
-publish a CVE advisory crediting you.
 
 Kind regards,
 
@@ -116,6 +115,8 @@ def reject_email(rejection: RejectReport, report: dict):
     else:
         additional_comment = "";
 
+    reporter, _ = parseaddr(report.get("reply_to") or report["from"])
+
     # TODO lookup project name mapping
     project = f"Apache {pmc.capitalize()}"
 
@@ -124,7 +125,7 @@ def reject_email(rejection: RejectReport, report: dict):
     else:
         signatory = f"{rejection.sender_name} on behalf of the {project} PMC"
 
-    res.set_content(f'''Hello,
+    res.set_content(f'''Dear {reporter},
 
 Thank you for your report. The PMC has determined that the issue you reported is NOT a vulnerability in {project}.
 {additional_comment}
