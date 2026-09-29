@@ -60,5 +60,11 @@ class UserSession:
 
     @classmethod
     async def create(cls) -> Self:
+        from app import config
+
+        app_config = config.get()
+        if app_config.environment == "dev":
+            # authentication is off: every request is the configured dev user
+            return cls(asfquart.session.ClientSession(app_config.dev_user.session_data()))
         client_session = await asfquart.session.read()
         return cls(client_session)

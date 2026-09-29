@@ -362,6 +362,10 @@ def create_app(test_environment: bool = False) -> asfquart.base.QuartApp:
 
     config.setup_app_config(quart_app, app_config)
 
+    if app_config.environment == "dev":
+        print(f"WARNING: environment is 'dev': authentication is disabled, "
+              f"every request runs as {app_config.dev_user.uid!r}")
+
     _register_routes(quart_app)
     _setup_context(quart_app, app_config)
     _setup_security_headers(quart_app)

@@ -365,3 +365,73 @@ async def test_post_without_fetch_metadata_is_accepted(quart_app, monkeypatch):
     )
 
     assert response.status_code == 200
+
+
+# --- dev environment: authentication off -----------------------------------
+
+_DEV_CONFIG = _CONFIG + """\
+environment: dev
+"""
+
+
+@pytest.fixture
+def dev_app(tmp_path, monkeypatch):
+    """A server whose config turns authentication off."""
+    return _build_app(tmp_path, monkeypatch, config=_DEV_CONFIG)
+
+
+@sync
+async def test_dev_environment_needs_no_login(dev_app, monkeypatch):
+    _anonymous(monkeypatch)
+    response = await dev_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    # the default dev user is on the security team, so it sees every project
+    assert "Development User" in body
+    assert "<code>dev</code>" in body
+    assert 'action="/api/project/cassandra/triage"' in body
+
+
+@sync
+async def test_dev_user_takes_triage_decisions(dev_app, monkeypatch, notification_api):
+    _anonymous(monkeypatch)
+    response = await dev_app.test_client().post(
+        "/api/project/cassandra/triage",
+        json={"message_id": MESSAGE_ID, "action": "accept", "tag": "2024-03-01 a flaw"},
+    )
+
+    assert response.status_code == 200
+    assert [(d.uid, d.name) for d in notification_api.decisions] == [("dev", "Development User")]
+
+
+@sync
+async def test_dev_user_is_configurable(tmp_path, monkeypatch):
+    config = _DEV_CONFIG + """\
+dev_user:
+  uid: jdoe
+  fullname: J. Doe
+  committees: [cassandra]
+"""
+    quart_app = _build_app(tmp_path, monkeypatch, config=config)
+    _anonymous(monkeypatch)
+    client = quart_app.test_client()
+
+    # a member of exactly one PMC lands on that project's page
+    home = await client.get("/")
+    assert home.status_code == 302
+    assert home.headers["Location"].endswith("/project/cassandra")
+
+    # ...and, not being on the security team, is kept out of the others
+    other = await client.get("/project/drill")
+    assert other.status_code != 200
+
+
+def test_environment_defaults_to_prod(tmp_path, monkeypatch):
+    quart_app = _build_app(tmp_path, monkeypatch)
+    assert quart_app.extensions["app_config"].environment == "prod"
+
+
+def test_environment_rejects_unknown_values(tmp_path, monkeypatch):
+    with pytest.raises(Exception, match="environment"):
+        _build_app(tmp_path, monkeypatch, config=_CONFIG + "environment: staging\n")

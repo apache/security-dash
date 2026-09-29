@@ -4,6 +4,15 @@ state_dir: ./state
 # kept here so they don't reappear in the statistics
 old_cve_close_dates:
   CVE-2020-1234: 2021-06-30
+# `dev` turns authentication off: every request runs as `dev_user` below.
+# Leave it unset (`prod`) anywhere other people can reach the server.
+#environment: dev
+#dev_user:
+#  uid: jdoe
+#  fullname: J. Doe
+#  committees: [security]
+#  projects: []
+#  is_root: false
 pmcs_using_jira:
   cxf: CXF
   drill: DRILL
