@@ -19,7 +19,7 @@ from datetime import date
 import pathlib
 import pydantic
 from asfquart.base import QuartApp
-from typing import Literal, cast
+from typing import cast
 
 class ServerConfig(pydantic.BaseModel):
     host: str = "0.0.0.0"
@@ -31,33 +31,12 @@ class ServerConfig(pydantic.BaseModel):
     def bind(self) -> str:
         return f"{self.host}:{self.port}"
 
-class DevUser(pydantic.BaseModel):
-    """The identity every request gets when `environment` is `dev`."""
-
-    uid: str = "dev"
-    fullname: str = "Development User"
-    committees: list[str] = ["security"]
-    projects: list[str] = []
-    is_root: bool = False
-
-    def session_data(self) -> dict[str, object]:
-        """The raw session dict asfquart builds a ClientSession from."""
-        return {
-            "uid": self.uid,
-            "fullname": self.fullname,
-            "pmcs": list(self.committees),
-            "projects": list(self.projects),
-            "isRoot": self.is_root,
-        }
-
 class AppConfig(pydantic.BaseModel):
-    environment: Literal["dev", "prod"] = "prod"
-    """`dev` disables authentication: every request runs as `dev_user`.
+    dev_mode: bool = False
+    """Local development only: logged-in users also get the `dev_committees` memberships."""
 
-    Never set it on a reachable host; the default is production."""
-
-    dev_user: DevUser = DevUser()
-    """Who a request is when `environment` is `dev`; ignored otherwise"""
+    dev_committees: list[str] = []
+    """PMCs every logged-in user is also a member of in `dev_mode`, to test their views."""
 
     data_dir: str
     """Base directory of issue metadata"""

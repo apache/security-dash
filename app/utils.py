@@ -37,7 +37,15 @@ class UserSession:
 
     @property
     def pmcs(self) -> list[str]:
-        return self.client_session.committees if self.client_session else []
+        if not self.client_session:
+            return []
+        from app import config
+
+        app_config = config.get()
+        if app_config.dev_mode:
+            # local development: also assume the configured memberships
+            return list(dict.fromkeys(self.client_session.committees + app_config.dev_committees))
+        return self.client_session.committees
 
     @property
     def projects(self) -> list[str]:
@@ -60,11 +68,5 @@ class UserSession:
 
     @classmethod
     async def create(cls) -> Self:
-        from app import config
-
-        app_config = config.get()
-        if app_config.environment == "dev":
-            # authentication is off: every request is the configured dev user
-            return cls(asfquart.session.ClientSession(app_config.dev_user.session_data()))
         client_session = await asfquart.session.read()
         return cls(client_session)

@@ -367,71 +367,59 @@ async def test_post_without_fetch_metadata_is_accepted(quart_app, monkeypatch):
     assert response.status_code == 200
 
 
-# --- dev environment: authentication off -----------------------------------
+# --- dev mode: extra memberships for local development ----------------------
 
 _DEV_CONFIG = _CONFIG + """\
-environment: dev
+dev_mode: true
+dev_committees: [cassandra]
 """
 
 
 @pytest.fixture
 def dev_app(tmp_path, monkeypatch):
-    """A server whose config turns authentication off."""
+    """A server whose config gives logged-in users extra memberships."""
     return _build_app(tmp_path, monkeypatch, config=_DEV_CONFIG)
 
 
 @sync
-async def test_dev_environment_needs_no_login(dev_app, monkeypatch):
+async def test_dev_mode_still_needs_a_login(dev_app, monkeypatch):
     _anonymous(monkeypatch)
+    response = await dev_app.test_client().get("/project/cassandra")
+
+    assert response.status_code != 200
+
+
+@sync
+async def test_dev_mode_adds_the_dev_committees(dev_app, monkeypatch):
+    _login(monkeypatch, committees=("kafka",))
     response = await dev_app.test_client().get("/project/cassandra")
     body = await response.get_data(as_text=True)
 
     assert response.status_code == 200
-    # the default dev user is on the security team, so it sees every project
-    assert "Development User" in body
-    assert "<code>dev</code>" in body
     assert 'action="/api/project/cassandra/triage"' in body
 
 
 @sync
-async def test_dev_user_takes_triage_decisions(dev_app, monkeypatch, notification_api):
-    _anonymous(monkeypatch)
-    response = await dev_app.test_client().post(
-        "/api/project/cassandra/triage",
-        json={"message_id": MESSAGE_ID, "action": "accept", "tag": "2024-03-01 a flaw"},
+async def test_dev_mode_triages_as_the_logged_in_user(dev_app, monkeypatch, notification_api):
+    _login(monkeypatch, uid="jane", fullname="Jane Developer", committees=("kafka",))
+    response = await _triage(
+        dev_app.test_client(),
+        {"message_id": MESSAGE_ID, "action": "accept", "tag": "2024-03-01 a flaw"},
     )
 
-    assert response.status_code == 200
-    assert [(d.uid, d.name) for d in notification_api.decisions] == [("dev", "Development User")]
+    assert response.status_code == 303
+    assert [(d.uid, d.name) for d in notification_api.decisions] == [("jane", "Jane Developer")]
 
 
 @sync
-async def test_dev_user_is_configurable(tmp_path, monkeypatch):
-    config = _DEV_CONFIG + """\
-dev_user:
-  uid: jdoe
-  fullname: J. Doe
-  committees: [cassandra]
-"""
-    quart_app = _build_app(tmp_path, monkeypatch, config=config)
-    _anonymous(monkeypatch)
-    client = quart_app.test_client()
+async def test_dev_committees_are_ignored_without_dev_mode(tmp_path, monkeypatch):
+    quart_app = _build_app(tmp_path, monkeypatch, config=_CONFIG + "dev_committees: [cassandra]\n")
+    _login(monkeypatch, committees=("kafka",))
+    response = await quart_app.test_client().get("/project/cassandra")
 
-    # a member of exactly one PMC lands on that project's page
-    home = await client.get("/")
-    assert home.status_code == 302
-    assert home.headers["Location"].endswith("/project/cassandra")
-
-    # ...and, not being on the security team, is kept out of the others
-    other = await client.get("/project/drill")
-    assert other.status_code != 200
+    assert response.status_code == 403
 
 
-def test_environment_defaults_to_prod(tmp_path, monkeypatch):
+def test_dev_mode_defaults_to_off(tmp_path, monkeypatch):
     quart_app = _build_app(tmp_path, monkeypatch)
-    assert quart_app.extensions["app_config"].environment == "prod"
-
-
-def test_environment_rejects_unknown_values(tmp_path, monkeypatch):
-    with pytest.raises(Exception, match="environment"):
-        _build_app(tmp_path, monkeypatch, config=_CONFIG + "environment: staging\n")
+    assert quart_app.extensions["app_config"].dev_mode is False
