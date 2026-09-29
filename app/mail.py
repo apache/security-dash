@@ -121,9 +121,9 @@ def reject_email(rejection: RejectReport, report: dict):
     project = f"Apache {pmc.capitalize()}"
 
     if pmc in config.get().pmcs_with_security_emails:
-        signatory = f"{rejection.sender_name} on behalf of the {project} Security Team"
+        signatory = f"{rejection.sender_name}\nSecurity Team member for {project}"
     else:
-        signatory = f"{rejection.sender_name} on behalf of the {project} PMC"
+        signatory = f"{rejection.sender_name}\nPMC member for {project} PMC"
 
     res.set_content(f'''Dear {reporter},
 
