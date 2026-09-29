@@ -350,3 +350,51 @@ footer p {
   font: inherit;
   cursor: pointer;
 }
+
+.incubator-table {
+  width: auto;
+  border: 1px solid #d1d2d3;
+}
+
+.incubator-table th,
+.incubator-table td {
+  border: 1px solid #d1d2d3;
+  padding: 0.25rem 0.75rem;
+  text-align: left;
+}
+
+.incubator-table thead th {
+  background-color: #eeeeee;
+}
+
+.incubator-table tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.incubator-table .incubator-count {
+  text-align: right;
+}
+
+.sortable-table th button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sortable-table th button::after {
+  content: " \2195";
+  color: #999999;
+}
+
+.sortable-table th[aria-sort="ascending"] button::after {
+  content: " \25B2";
+  color: inherit;
+}
+
+.sortable-table th[aria-sort="descending"] button::after {
+  content: " \25BC";
+  color: inherit;
+}

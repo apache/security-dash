@@ -10,6 +10,9 @@ pmcs_using_jira:
 pmcs_with_security_emails:
   - airflow
   - ambari
+pmcs_in_incubator:
+  - amoro
+  - seata
 pmcs_with_subprojects:
   - commons
 # Retired PMCs whose reports the security team handles directly;

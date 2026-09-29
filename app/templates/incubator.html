@@ -1,0 +1,64 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}
+Currently open security reports for incubating projects
+{% endblock title %}
+{% block page_title %}
+Currently open security reports for incubating projects
+{% endblock page_title %}
+
+{% block content %}
+<p>
+This dashboard gives an overview of the security reports currently tracked by the Apache Security Team for the podlings of the <b>incubator</b>.
+</p>
+
+<p>
+Information on this page may be delayed by as much as a few days.
+If you see anything that seems incorrect, email
+<a href="mailto:security@apache.org">security@apache.org</a>
+</p>
+
+<h2>Summary</h2>
+<table class="reports-table incubator-table sortable-table">
+  <thead>
+    <tr>
+      <th><button type="button">Podling</button></th>
+      <th aria-sort="descending" data-sort-type="number" title="{{ untriaged_description }}"><button type="button">Untriaged</button></th>
+      <th data-sort-type="number"><button type="button">Total</button></th>
+      <th><button type="button">Oldest untriaged</button></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for podling, untriaged, total, oldest in summary %}
+    <tr>
+      <td><a href="#{{ podling }}">{{ podling }}</a></td>
+      <td class="incubator-count" data-sort-value="{{ untriaged }}">
+        {%- if untriaged -%}
+          <a href="#{{ podling }}-untriaged">{{ untriaged }}</a>
+        {%- endif -%}
+      </td>
+      <td class="incubator-count">{{ total }}</td>
+      <td>{{ oldest.strftime('%Y-%m-%d') if oldest else "" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% for podling, sections in podling_sections|dictsort %}
+  <h2 id="{{ podling }}">{{ podling }}</h2>
+  {% if sections %}
+    {% with project_name=podling,
+             show_subproject=podling in pmcs_with_subprojects,
+             anchor_prefix=podling ~ "-" %}
+      {% include "includes/reports.html" %}
+    {% endwith %}
+  {% else %}
+    <p>No open security reports.</p>
+  {% endif %}
+{% endfor %}
+{% endblock content %}
+
+{% block javascripts %}
+  {{ super() }}
+  <script src="/assets/js/sortable-table.js"></script>
+{% endblock javascripts %}

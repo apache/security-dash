@@ -163,25 +163,47 @@ async def _audit_access(project: str):
 
     print(f"User {user.uid} accessed project {project}{mark}")
 
-@CLIENT.route("/project/<project>")
-async def project(project: str):
-    await _require_authorization_for(project)
-    await _audit_access(project)
-    r = await reports.load_pmc_reports(project)
+def _sections(r: list[reports.Report], triage_project: str | None = None) -> list[tuple[str, str, str, str | None, list[reports.Report]]]:
+    """Reports grouped by state, with the triage form to show if `triage_project` is given."""
     states = sorted(dict.fromkeys(report.state for report in r), key=_state_sort_key)
-    sections = [
+    return [
         (
+            state,
             _state_title(state),
             _state_description(state),
-            triage.form_template(project, state),
+            triage.form_template(triage_project, state) if triage_project else None,
             [report for report in r if report.state == state],
         )
         for state in states
     ]
+
+async def _incubator(podlings: list[str]):
+    podling_sections = {podling: _sections(await reports.load_pmc_reports(podling)) for podling in podlings}
+    untriaged = {
+        podling: [report for state, _, _, _, r in sections if state == "untriaged" for report in r]
+        for podling, sections in podling_sections.items()
+    }
+    return await quart.render_template("incubator.html",
+        untriaged_description=_state_description("untriaged"),
+        summary=sorted(
+            ((podling, len(r), sum(len(s) for _, _, _, _, s in podling_sections[podling]),
+              min((report.date for report in r), default=None))
+             for podling, r in untriaged.items()),
+            key=lambda row: (-row[1], -row[2], row[0])),
+        podling_sections=podling_sections,
+        pmcs_with_subprojects=config.get().pmcs_with_subprojects)
+
+@CLIENT.route("/project/<project>")
+async def project(project: str):
+    await _require_authorization_for(project)
+    await _audit_access(project)
+    if project == "incubator":
+        return await _incubator(config.get().pmcs_in_incubator)
+    r = await reports.load_pmc_reports(project)
     return await quart.render_template("project.html",
         project_name=project,
         debt_constant=statistics.DEBT_CONSTANT,
-        sections=sections,
+        sections=_sections(r, triage_project=project),
         max_feedback_length=triage.MAX_FEEDBACK_LENGTH,
         message_preview=triage.message_preview,
         show_subproject=project in config.get().pmcs_with_subprojects or project == "security")

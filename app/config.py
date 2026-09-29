@@ -70,6 +70,9 @@ class AppConfig(pydantic.BaseModel):
     oauth_enforce_https: bool = True
     """enforce HTTPS in the callback to the relying party."""
 
+    pmcs_in_incubator: list[str] = []
+    """Podlings in the Incubator, summarized on the incubator page."""
+
     server: ServerConfig = ServerConfig()
 
     backend: str = "http://localhost:5002"
