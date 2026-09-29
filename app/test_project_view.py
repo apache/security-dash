@@ -40,8 +40,6 @@ _CONFIG = """\
 data_dir: {data_dir}
 state_dir: {state_dir}
 old_cve_close_dates: {{}}
-pmcs_with_triage:
-  - cassandra
 """
 
 
@@ -72,13 +70,6 @@ def _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw", extra="", confi
 @pytest.fixture
 def quart_app(tmp_path, monkeypatch):
     return _build_app(tmp_path, monkeypatch)
-
-
-@pytest.fixture
-def quart_app_without_triage(tmp_path, monkeypatch):
-    """A project that has not asked to take its decisions here."""
-    config = _CONFIG.replace("pmcs_with_triage:\n  - cassandra\n", "")
-    return _build_app(tmp_path, monkeypatch, config=config)
 
 
 def _login(monkeypatch, uid="jdoe", fullname="J. Doe", committees=("cassandra",), projects=()):
@@ -132,33 +123,6 @@ async def test_untriaged_report_gets_a_triage_form(quart_app, monkeypatch):
     assert 'type="radio" name="action" value="accept"' in body
     assert 'type="radio" name="action" value="reject"' in body
     assert body.count('type="submit"') == 1
-
-
-@sync
-async def test_a_project_without_triage_gets_no_form(quart_app_without_triage, monkeypatch):
-    _login(monkeypatch)
-    response = await quart_app_without_triage.test_client().get("/project/cassandra")
-    body = await response.get_data(as_text=True)
-
-    assert response.status_code == 200
-    assert "a flaw" in body
-    assert "/api/project/cassandra/triage" not in body
-    assert '<td class="reports-triage">' not in body
-
-
-@sync
-async def test_a_project_without_triage_refuses_a_decision(
-    quart_app_without_triage, monkeypatch, notification_api
-):
-    """The opt-in gates the endpoint too, not just the form."""
-    _login(monkeypatch)
-    response = await quart_app_without_triage.test_client().post(
-        "/api/project/cassandra/triage",
-        json={"message_id": MESSAGE_ID, "action": "accept"},
-    )
-
-    assert response.status_code == 404
-    assert notification_api.decisions == []
 
 
 @sync
