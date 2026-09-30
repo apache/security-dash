@@ -4,6 +4,10 @@ state_dir: ./state
 # kept here so they don't reappear in the statistics
 old_cve_close_dates:
   CVE-2020-1234: 2021-06-30
+# Local development only: every logged-in user is also a member of `dev_committees`,
+# to test the views of PMCs you are not on. Never enable it on a shared server.
+#dev_mode: true                     # default: false
+#dev_committees: [incubator]
 pmcs_using_jira:
   cxf: CXF
   drill: DRILL

@@ -362,6 +362,9 @@ def create_app(test_environment: bool = False) -> asfquart.base.QuartApp:
 
     config.setup_app_config(quart_app, app_config)
 
+    if app_config.dev_mode:
+        print(f"WARNING: dev_mode is on: every logged-in user is also a member of {app_config.dev_committees}")
+
     _register_routes(quart_app)
     _setup_context(quart_app, app_config)
     _setup_security_headers(quart_app)

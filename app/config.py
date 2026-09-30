@@ -32,6 +32,12 @@ class ServerConfig(pydantic.BaseModel):
         return f"{self.host}:{self.port}"
 
 class AppConfig(pydantic.BaseModel):
+    dev_mode: bool = False
+    """Local development only: logged-in users also get the `dev_committees` memberships."""
+
+    dev_committees: list[str] = []
+    """PMCs every logged-in user is also a member of in `dev_mode`, to test their views."""
+
     data_dir: str
     """Base directory of issue metadata"""
 
