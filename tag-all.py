@@ -199,7 +199,7 @@ def parseinbox(verbose, dryrun):
 
             # Nothing found, but are there CVE names in the subject?
             cvelabels = []
-            if "incomplete fix" not in subject and "bypass" not in subject and "fix is incomplete" not in subject:
+            if "incomplete fix" not in subject.lower() and "bypass" not in subject.lower() and "fix is incomplete" not in subject.lower() and "follow-up to cve" not in subject.lower():
                 for match in re.finditer('(CVE-\d+-\d+)', subject):
                     ourcve = match.group(1)
                     if (verbose):
