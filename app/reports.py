@@ -121,21 +121,38 @@ class Report:
         return _ponymail_link(self.message_id, self.listid)
 
 def _known_bad_address(time: str | None, address: str):
+    if address.endswith("gsuite.cloud.apache.org"):
+        return True
+    if address == "pmc@beam.apache.org":
+        return True
+
     if time:
         mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
         spark_retirement = datetime.date.fromisoformat("2026-02-16")
         if address == 'security@spark.apache.org' and spark_retirement < mailtime:
             return True
+
     return False
 
-def _apache_list_address(email):
+_SEC_LIST_RE = re.compile(r"security@([-\w]+).apache.org")
+
+def _apache_list_address(pmc: str, email):
     addresses = list(getaddresses([email['to']]))
     if 'cc' in email:
         addresses.extend(getaddresses([email['cc']]))
     for _, address in addresses:
+        if _known_bad_address(email.get('mailtime'), address):
+            continue
         if address == "officesecurity@lists.freedesktop.org":
             return "security@openoffice.apache.org"
-        if address.endswith('.apache.org') and not _known_bad_address(email.get('mailtime'), address):
+        m = _SEC_LIST_RE.match(address)
+        if m:
+            address_pmc = m.group(1)
+            if address_pmc == pmc and pmc in config.get().pmcs_with_security_emails:
+                return address
+            else:
+                continue
+        if address.endswith('.apache.org'):
             return address
     return None
 
@@ -143,9 +160,9 @@ def _ponymail_link(message_id, listid):
     partly_encoded_message_id = message_id.replace(' ', '+').replace('+', '%2B').replace('=', '%3D').replace('@', '%40')
     return f"https://lists.apache.org/thread/{partly_encoded_message_id}?<{listid}>"
 
-def _project_link(emails):
+def _project_link(pmc, emails):
     for email in emails[:5]:
-        list_addr = _apache_list_address(email)
+        list_addr = _apache_list_address(pmc, email)
         if list_addr:
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
     return _ponymail_link(emails[0]['message_id'], "security.apache.org")
@@ -169,13 +186,13 @@ def _title(email) -> str:
         title = title.removeprefix("[Security] ")
     return title
 
-def _threads(emails) -> list[ThreadLink]:
+def _threads(pmc: str, emails) -> list[ThreadLink]:
     """One entry per distinct thread in the report, earliest first."""
     groups: dict[str, list] = {}
     for email in emails:
         groups.setdefault(_thread_key(_title(email)), []).append(email)
     return [
-        ThreadLink(_title(group[0]), _project_link(group))
+        ThreadLink(_title(group[0]), _project_link(pmc, group))
         for group in groups.values()
     ]
 
@@ -238,14 +255,14 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
     first_email = emails[0]
     title = _title(first_email)
 
-    apache_list_address = _apache_list_address(first_email)
+    apache_list_address = _apache_list_address(pmc, first_email)
     if apache_list_address:
         listid = apache_list_address.replace('@', '.')
     else:
         listid = 'security.apache.org'
 
-    link = _project_link(emails)
-    duplicates = tuple(t for t in _threads(emails)[1:] if t.link != link)
+    link = _project_link(pmc, emails)
+    duplicates = tuple(t for t in _threads(pmc, emails)[1:] if t.link != link)
 
     return Report(
         name,
@@ -276,9 +293,9 @@ def _read_emails(path: pathlib.Path) -> list[object]:
         if isinstance(e, dict) and e.get('message_id') and e.get('mailtime')
     ]
 
-def _label_report(name: str, cves: list[str], email, state: str) -> Report:
+def _label_report(pmc: str, name: str, cves: list[str], email, state: str) -> Report:
     """A report that stands for one entry inside a multi-thread label."""
-    apache_list_address = _apache_list_address(email)
+    apache_list_address = _apache_list_address(pmc, email)
     if apache_list_address:
         listid = apache_list_address.replace('@', '.')
     else:
@@ -292,14 +309,14 @@ def _label_report(name: str, cves: list[str], email, state: str) -> Report:
         _title(email),
         email['message_id'],
         listid,
-        _project_link([email]),
+        _project_link(pmc, [email]),
         _reporter(email),
         state,
         None,
         datetime.datetime.fromtimestamp(email['mailtime'], tz=datetime.timezone.utc),
     )
 
-def _load_glasswing_reports(path: pathlib.Path) -> list[Report]:
+def _load_glasswing_reports(pmc: str, path: pathlib.Path) -> list[Report]:
     """One entry per CVE allocated under the audit label but not published yet.
 
     A CVE counts as published once the label holds the mail announcing it was
@@ -320,7 +337,7 @@ def _load_glasswing_reports(path: pathlib.Path) -> list[Report]:
             allocated.setdefault(cve, email)
 
     return [
-        _label_report(path.name, [cve], email, GLASSWING_STATE)
+        _label_report(pmc, path.name, [cve], email, GLASSWING_STATE)
         for cve, email in allocated.items()
         if cve not in published
     ]
@@ -340,7 +357,7 @@ def _thread_key(subject: str) -> str:
         subject = stripped
     return re.sub(r"\s+", " ", subject).strip().lower()
 
-def _load_not_forwarded_reports(path: pathlib.Path) -> list[Report]:
+def _load_not_forwarded_reports(pmc: str, path: pathlib.Path) -> list[Report]:
     """One entry per thread head under the not-forwarded label."""
     heads: dict[str, object] = {}
 
@@ -351,7 +368,7 @@ def _load_not_forwarded_reports(path: pathlib.Path) -> list[Report]:
             heads[key] = email
 
     return [
-        _label_report(path.name, [], email, NOT_FORWARDED_STATE)
+        _label_report(pmc, path.name, [], email, NOT_FORWARDED_STATE)
         for email in heads.values()
     ]
 
@@ -372,7 +389,7 @@ def _load_reports_dir(pmc: str) -> list[Report]:
         # a handful of labels hold many threads instead of a single report
         loader = _LABEL_LOADERS.get(t.stem)
         if loader:
-            result.extend(loader(t))
+            result.extend(loader(pmc, t))
             continue
         r = load_pmc_report(pmc, t)
         if r is not None:
