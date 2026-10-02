@@ -121,11 +121,15 @@ class Report:
         return _ponymail_link(self.message_id, self.listid)
 
 def _known_bad_address(time: str | None, address: str):
+    if address.endswith("gsuite.cloud.apache.org"):
+        return True
+
     if time:
         mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
         spark_retirement = datetime.date.fromisoformat("2026-02-16")
         if address == 'security@spark.apache.org' and spark_retirement < mailtime:
             return True
+
     return False
 
 _SEC_LIST_RE = re.compile(r"security@([-\w]+).apache.org")

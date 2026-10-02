@@ -173,6 +173,19 @@ def test_project_link_ignores_invalid_security_list():
         '?<private.beam.apache.org>'
     )
 
+def test_project_link_ignores_bounce():
+    # Beam has no security list
+    emails = [
+        {'to': 'reporter@aisle.com', 'message_id': '<a@aisle.com>'},
+        {'to': 'security@gsuite.cloud.apache.org', 'message_id': '<b@gmail.com>'},
+        {'to': 'private@beam.apache.org', 'message_id': '<c@apache.org>'},
+    ]
+    assert _project_link("beam", emails) == (
+        'https://lists.apache.org/thread/'
+        '<c%40apache.org>'
+        '?<private.beam.apache.org>'
+    )
+
 
 def test_asf_member_link_uses_cc_when_to_is_non_apache(tmp_path, monkeypatch):
     monkeypatch.setattr(
