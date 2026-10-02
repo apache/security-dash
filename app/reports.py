@@ -123,6 +123,8 @@ class Report:
 def _known_bad_address(time: str | None, address: str):
     if address.endswith("gsuite.cloud.apache.org"):
         return True
+    if address == "pmc@beam.apache.org":
+        return True
 
     if time:
         mailtime = datetime.datetime.fromtimestamp(time, tz=datetime.timezone.utc).date()
