@@ -111,8 +111,11 @@ async def _require_authorization_for(project: str) -> utils.UserSession:
     if not user.is_authenticated:
         raise asfquart.auth.AuthenticationFailed(asfquart.auth.Requirements.E_NOT_LOGGED_IN)
     pmcs = user.accessible_pmcs
+    print(user)
+    print(pmcs)
     if (not _asf_group_acl(project, pmcs, user.projects)
         and not _asf_group_acl("security", pmcs, user.projects)
+        and not _asf_group_acl("board", pmcs, user.projects)
         # the Incubator PMC oversees its podlings
         and not (project in config.get().pmcs_in_incubator
                  and _asf_group_acl("incubator", pmcs, user.projects))):
