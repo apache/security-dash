@@ -62,6 +62,7 @@ def _full_config(tmp_path, pmcs_in_attic=()):
         pmcs_in_attic=list(pmcs_in_attic),
         pmcs_using_jira={},
         pmcs_using_github={},
+        pmcs_with_security_emails=["cassandra"]
     )
 
 
@@ -146,16 +147,30 @@ def test_asf_member_link_apache_to_uses_to_domain(tmp_path, monkeypatch):
     )
 
 
-def test_project_link_returns_first_apache_email():
+def test_project_link_returns_first_apache_email(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
     emails = [
         {'to': 'reporter@aisle.com', 'message_id': '<a@aisle.com>'},
         {'to': 'security@cassandra.apache.org', 'message_id': '<b@cassandra.apache.org>'},
         {'to': 'security@cassandra.apache.org', 'message_id': '<c@cassandra.apache.org>'},
     ]
-    assert _project_link(emails) == (
+    assert _project_link("cassandra", emails) == (
         'https://lists.apache.org/thread/'
         '<b%40cassandra.apache.org>'
         '?<security.cassandra.apache.org>'
+    )
+
+def test_project_link_ignores_invalid_security_list():
+    # Beam has no security list
+    emails = [
+        {'to': 'reporter@aisle.com', 'message_id': '<a@aisle.com>'},
+        {'to': 'security@beam.apache.org', 'message_id': '<b@apache.org>'},
+        {'to': 'private@beam.apache.org', 'message_id': '<c@apache.org>'},
+    ]
+    assert _project_link("beam", emails) == (
+        'https://lists.apache.org/thread/'
+        '<c%40apache.org>'
+        '?<private.beam.apache.org>'
     )
 
 
@@ -195,7 +210,8 @@ def test_asf_member_link_prefers_to_over_cc(tmp_path, monkeypatch):
     )
 
 
-def test_project_link_finds_apache_address_in_cc():
+def test_project_link_finds_apache_address_in_cc(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
     emails = [
         {
             'to': 'reporter@aisle.com',
@@ -203,7 +219,7 @@ def test_project_link_finds_apache_address_in_cc():
             'message_id': '<a@aisle.com>',
         },
     ]
-    assert _project_link(emails) == (
+    assert _project_link("cassandra", emails) == (
         'https://lists.apache.org/thread/'
         '<a%40aisle.com>'
         '?<security.cassandra.apache.org>'
