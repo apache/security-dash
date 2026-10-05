@@ -106,19 +106,26 @@ def _asf_group_acl(project, pmc_membership, project_membership):
         )
     )
 
+def _sees_every_project(user: utils.UserSession) -> bool:
+    pmcs = user.accessible_pmcs
+    return (_asf_group_acl("security", pmcs, user.projects)
+            or _asf_group_acl("board", pmcs, user.projects))
+
+def _can_see_project(user: utils.UserSession, project: str) -> bool:
+    pmcs = user.accessible_pmcs
+    return (_asf_group_acl(project, pmcs, user.projects)
+            or _sees_every_project(user)
+            # the Incubator PMC oversees its podlings
+            or (project in config.get().pmcs_in_incubator
+                and _asf_group_acl("incubator", pmcs, user.projects)))
+
 async def _require_authorization_for(project: str) -> utils.UserSession:
     user = await utils.UserSession.create()
     if not user.is_authenticated:
         raise asfquart.auth.AuthenticationFailed(asfquart.auth.Requirements.E_NOT_LOGGED_IN)
-    pmcs = user.accessible_pmcs
     print(user)
-    print(pmcs)
-    if (not _asf_group_acl(project, pmcs, user.projects)
-        and not _asf_group_acl("security", pmcs, user.projects)
-        and not _asf_group_acl("board", pmcs, user.projects)
-        # the Incubator PMC oversees its podlings
-        and not (project in config.get().pmcs_in_incubator
-                 and _asf_group_acl("incubator", pmcs, user.projects))):
+    print(user.accessible_pmcs)
+    if not _can_see_project(user, project):
         raise asfquart.auth.AuthenticationFailed(f"You are not a member of the {project} PMC.")
     return user
 
@@ -144,19 +151,20 @@ async def statistics_debt_api():
 
     if requested_pmcs:
         for pmc in requested_pmcs:
-            if pmc not in user.accessible_pmcs and not user.in_security_team:
+            if not _can_see_project(user, pmc) and not user.in_security_team:
                 quart.abort(403)
 
-    # security team members see every project; everyone else sees only the
-    # projects they can access (the same set shown on their front page).
+    # security team and board members see every project; everyone else sees
+    # only the projects whose reports they can open.
     if requested_pmcs:
         pmcs = requested_pmcs
-    elif user.in_security_team:
+    elif user.in_security_team or _sees_every_project(user):
         pmcs = None
-    elif user.accessible_pmcs:
-        pmcs = user.accessible_pmcs
     else:
-        quart.abort(403)
+        pmcs = sorted(set(user.accessible_pmcs).union(
+            pmc for pmc in statistics.list_pmcs() if _can_see_project(user, pmc)))
+        if not pmcs:
+            quart.abort(403)
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     return quart.jsonify(statistics.compute_debt_chart(now, pmcs=pmcs))
 
