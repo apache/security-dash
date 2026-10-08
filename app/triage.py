@@ -22,9 +22,8 @@ notification API, which emails the feedback to the reporter and moves the report
 on (rejected reports end up in the zzz-non-issue tree, so they drop off this
 dashboard entirely).
 
-Which form a report gets, and which actions that form may submit, depend on the
-state the report is in: both live in `_STATE_FORMS` below, so adding a form for
-another state is a matter of adding an entry and a template.
+Every report gets the same form, whatever its state: a report tentatively marked
+as a non-issue may still turn out to be a vulnerability, and vice versa.
 """
 
 from app import config
@@ -40,18 +39,6 @@ import urllib
 class TriageAction(enum.StrEnum):
     ACCEPT = "accept"
     REJECT = "reject"
-
-@dataclasses.dataclass(frozen=True)
-class _StateForm:
-    template: str
-    actions: frozenset[TriageAction]
-
-_STATE_FORMS: dict[str, _StateForm] = {
-    "untriaged": _StateForm(
-        template="includes/forms/untriaged.html",
-        actions=frozenset({TriageAction.ACCEPT, TriageAction.REJECT}),
-    ),
-}
 
 MAX_FEEDBACK_LENGTH = 10_000
 
@@ -143,11 +130,6 @@ class TriageError(Exception):
 class TriageUnavailable(Exception):
     """The decision was valid, but could not be handed to the notification API."""
 
-def form_template(project: str, state: str) -> str | None:
-    """The form to show for a report of `project` in `state`."""
-    form = _STATE_FORMS.get(state)
-    return form.template if form else None
-
 @dataclasses.dataclass(frozen=True)
 class TriageDecision:
     project: str
@@ -179,7 +161,7 @@ def parse_decision(
 
     The report is looked up among `candidates` rather than trusted from the
     payload, so a decision can only ever apply to a report of the project the
-    user was authorized for, in a state that has a form.
+    user was authorized for.
     """
     message_id = _required_string(payload, "message_id")
     tag = _required_string(payload, "tag")
@@ -195,18 +177,6 @@ def parse_decision(
     if len(matches) > 1:
         raise TriageError(f"report {message_id!r} in {project} not unique", status=400)
     report = matches[0]
-
-    form = _STATE_FORMS.get(report.state)
-    if form is None:
-        raise TriageError(
-            f"report {message_id!r} is in state {report.state!r}, which cannot be triaged",
-            status=409,
-        )
-    if action not in form.actions:
-        raise TriageError(
-            f"cannot {action} a report in state {report.state!r}",
-            status=409,
-        )
 
     feedback = payload.get("feedback") or ""
     if not isinstance(feedback, str):

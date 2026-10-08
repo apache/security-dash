@@ -2,7 +2,7 @@
     Expects: sections, project_name, show_subproject, and optionally anchor_prefix;
     the triage forms also need max_feedback_length, message_preview
     and optionally triage_view, the page they return to. -#}
-{% for state, title, description, form_template, reports in sections %}
+{% for state, title, description, reports in sections %}
   <h3 id="{{ anchor_prefix|default("") }}{{ state }}">{{ title }}
     {% if reports|length > 5 %}
     ({{ reports|length }})
@@ -56,11 +56,9 @@
           </details>
           {% endif %}
         </td>
-        {% if form_template %}
         <td class="reports-triage">
-          {% include form_template %}
+          {% include "includes/forms/triage.html" %}
         </td>
-        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

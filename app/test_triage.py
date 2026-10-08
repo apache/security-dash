@@ -105,13 +105,12 @@ def test_report_from_another_project_is_not_found():
     assert e.value.status == 404
 
 
-def test_report_in_a_state_without_a_form_cannot_be_triaged():
-    with pytest.raises(TriageError) as e:
-        _decide(
-            {"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw"},
-            candidates=[_report(state="confirmed")],
-        )
-    assert e.value.status == 409
+def test_report_in_any_state_can_be_triaged():
+    decision = _decide(
+        {"message_id": "<abc@cassandra.apache.org>", "action": "reject", "tag": "2024-03-01 a flaw"},
+        candidates=[_report(state="non-issue-feedback")],
+    )
+    assert decision.action == "reject"
 
 
 def test_overlong_feedback_is_rejected():
@@ -128,12 +127,6 @@ def test_overlong_feedback_is_rejected():
 def test_non_text_feedback_is_rejected():
     with pytest.raises(TriageError):
         _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw", "feedback": {"a": 1}})
-
-
-def test_untriaged_has_a_form_and_other_states_do_not():
-    assert triage.form_template("cassandra", "untriaged") == "includes/forms/untriaged.html"
-    assert triage.form_template("cassandra", "confirmed") is None
-    assert triage.form_template("cassandra", "non-issue-docs") is None
 
 
 class _FakeResponse:

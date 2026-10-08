@@ -1,5 +1,5 @@
-{# Triage form for an untriaged report. The PMC picks a decision and writes the
-   feedback; both are handed to the notification API, which sends the email
+{# Triage form for a report, whatever its state.
+   The PMC picks a decision and writes the feedback; both are handed to the notification API, which sends the email
    previewed here. The static parts come from triage.message_preview(). #}
 {% set preview = message_preview(project_name, report, current_user.fullname or current_user.uid) %}
 <details class="triage">
