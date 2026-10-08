@@ -174,7 +174,7 @@ async def test_preview_falls_back_to_the_asf_id_when_the_name_is_unknown(quart_a
 
 
 @sync
-async def test_confirmed_report_gets_no_form(tmp_path, monkeypatch):
+async def test_confirmed_report_gets_a_triage_form(tmp_path, monkeypatch):
     quart_app = _build_app(tmp_path, monkeypatch, label="CVE-2024-1234 a flaw")
     _login(monkeypatch)
 
@@ -182,7 +182,7 @@ async def test_confirmed_report_gets_no_form(tmp_path, monkeypatch):
     body = await response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "Triage this report" not in body
+    assert 'action="/api/project/cassandra/triage"' in body
 
 
 @sync
