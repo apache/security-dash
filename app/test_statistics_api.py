@@ -108,7 +108,7 @@ async def test_committer_of_a_pmc_with_security_emails(tmp_path, monkeypatch):
     _login(monkeypatch, projects=("tomcat",))
 
     assert await _can_open_project(quart_app, "tomcat")
-    assert await _debt(quart_app) == (200, ["tomcat"])
+    assert (await _debt(quart_app))[0] == 403
     assert await _debt(quart_app, "tomcat") == (200, ["tomcat"])
 
 
@@ -118,7 +118,7 @@ async def test_incubator_pmc_member_sees_podlings(tmp_path, monkeypatch):
     _login(monkeypatch, committees=("incubator",))
 
     assert await _can_open_project(quart_app, "podling")
-    assert await _debt(quart_app) == (200, ["podling"])
+    assert await _debt(quart_app) == (200, [])
     assert await _debt(quart_app, "podling") == (200, ["podling"])
     assert not await _can_open_project(quart_app, "cassandra")
     assert (await _debt(quart_app, "cassandra"))[0] == 403

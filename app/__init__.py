@@ -151,20 +151,19 @@ async def statistics_debt_api():
 
     if requested_pmcs:
         for pmc in requested_pmcs:
-            if not _can_see_project(user, pmc) and not user.in_security_team:
+            if not _can_see_project(user, pmc):
                 quart.abort(403)
 
     # security team and board members see every project; everyone else sees
-    # only the projects whose reports they can open.
+    # only the projects they can access (the same set shown on their front page).
     if requested_pmcs:
         pmcs = requested_pmcs
-    elif user.in_security_team or _sees_every_project(user):
+    elif _sees_every_project(user):
         pmcs = None
+    elif user.accessible_pmcs:
+        pmcs = user.accessible_pmcs
     else:
-        pmcs = sorted(set(user.accessible_pmcs).union(
-            pmc for pmc in statistics.list_pmcs() if _can_see_project(user, pmc)))
-        if not pmcs:
-            quart.abort(403)
+        quart.abort(403)
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     return quart.jsonify(statistics.compute_debt_chart(now, pmcs=pmcs))
 
