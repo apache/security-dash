@@ -382,8 +382,8 @@ def _allocate_cve_query(body):
 
 
 @sync
-async def test_allocate_cve_link_passes_the_reporter_email(tmp_path, monkeypatch):
-    """So that cveprocess can Bcc the reporter on the notification emails."""
+async def test_allocate_cve_link_passes_the_reporter(tmp_path, monkeypatch):
+    """So that cveprocess can credit the reporter and Bcc them on the notification emails."""
     # a '+' has to survive the query string, where it would otherwise read as a space
     quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
                            sender="Jane Reporter <jane+asf@aisle.com>")
@@ -392,12 +392,28 @@ async def test_allocate_cve_link_passes_the_reporter_email(tmp_path, monkeypatch
     response = await quart_app.test_client().get("/project/cassandra")
     query = _allocate_cve_query(await response.get_data(as_text=True))
 
-    assert query["reporters"] == ["jane+asf@aisle.com"]
+    assert query["reportername"] == ["Jane Reporter"]
+    assert query["reporteremail"] == ["jane+asf@aisle.com"]
+
+
+@sync
+async def test_allocate_cve_link_never_passes_the_address_as_the_name(tmp_path, monkeypatch):
+    """The name ends up in a public credit, so it must not fall back to the address."""
+    quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
+                           sender="jane@aisle.com")
+    _login(monkeypatch)
+
+    response = await quart_app.test_client().get("/project/cassandra")
+    query = _allocate_cve_query(await response.get_data(as_text=True))
+
+    assert "reportername" not in query
+    assert query["reporteremail"] == ["jane@aisle.com"]
 
 
 @sync
 async def test_allocate_cve_link_leaves_out_an_unknown_reporter(tmp_path, monkeypatch):
-    # rewritten by the list, with no Reply-To to recover the reporter from
+    # shouldn't happen with a correctly configured list, but reply_to is optional in the
+    # case data, and without it the reporter behind a sender the list rewrote is unknown
     quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
                            sender="Jane Reporter via Security <security@cassandra.apache.org>")
     _login(monkeypatch)
@@ -405,7 +421,8 @@ async def test_allocate_cve_link_leaves_out_an_unknown_reporter(tmp_path, monkey
     response = await quart_app.test_client().get("/project/cassandra")
     query = _allocate_cve_query(await response.get_data(as_text=True))
 
-    assert "reporters" not in query
+    assert "reportername" not in query
+    assert "reporteremail" not in query
 
 
 # --- dev mode: extra memberships for local development ----------------------

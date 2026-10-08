@@ -33,7 +33,7 @@
             <div><a href="https://cveprocess.apache.org/cve5/{{cve}}">{{ cve }}</a></div>
           {%- endfor -%}
           {%- if report.state == 'confirmed' and not report.cves -%}
-            <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}&amp;messageid={{ report.message_id|urlencode }}&amp;listid={{ report.listid|urlencode }}{% if report.reporter %}&amp;reporters={{ report.reporter.email|urlencode }}{% endif %}">allocate CVE</a></div>
+            <div><a href="https://cveprocess.apache.org/allocatecve?pmc={{ project_name|urlencode }}&amp;title={{ report.sanitized_title|urlencode }}&amp;messageid={{ report.message_id|urlencode }}&amp;listid={{ report.listid|urlencode }}{% if report.reporter %}&amp;reportername={{ report.reporter.name|urlencode }}&amp;reporteremail={{ report.reporter.email|urlencode }}{% endif %}">allocate CVE</a></div>
           {%- endif -%}
         </td>
         <td class="reports-reporter">

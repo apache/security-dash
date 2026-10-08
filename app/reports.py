@@ -150,16 +150,18 @@ def _project_link(emails):
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
     return _ponymail_link(emails[0]['message_id'], "security.apache.org")
 
-def _subject(email) -> str:
-    raw_subject = email.get('subj', '')
+def _decoded(raw: str) -> str:
+    """A raw header value with its RFC 2047 encoded words decoded."""
     try:
-        subject = "".join(
+        return "".join(
             s.decode(c or "ascii", errors="replace") if isinstance(s, bytes) else s
-            for s, c in decode_header(raw_subject)
+            for s, c in decode_header(raw)
         )
     except Exception:
-        subject = raw_subject
-    return subject.strip()
+        return raw
+
+def _subject(email) -> str:
+    return _decoded(email.get('subj', '')).strip()
 
 def _title(email) -> str:
     title = _subject(email) or "(untitled)"
@@ -189,7 +191,7 @@ def _reporter(email) -> Reporter | None:
         if not reply_to_addresses:
             return None
         name, address = reply_to_addresses[0]
-    return Reporter(name=name, email=address)
+    return Reporter(name=_decoded(name), email=address)
 
 def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     with open(path) as f:
