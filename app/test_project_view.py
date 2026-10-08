@@ -20,13 +20,17 @@
 import asfquart
 import asyncio
 import functools
+import html
 import json
 import pytest
+import re
 import types
+import urllib.parse
 
 import app as app_module
 
 MESSAGE_ID = "<abc@cassandra.apache.org>"
+REPORTER = "Jane Reporter <jane@aisle.com>"
 
 
 def sync(test):
@@ -43,13 +47,13 @@ old_cve_close_dates: {{}}
 """
 
 
-def _write_report(data_dir, pmc, label, *, message_id=MESSAGE_ID):
+def _write_report(data_dir, pmc, label, *, message_id=MESSAGE_ID, sender=REPORTER):
     pmc_dir = data_dir / pmc
     pmc_dir.mkdir(parents=True, exist_ok=True)
     (pmc_dir / f"{label}.json").write_text(json.dumps([
         {
             "subj": "[SECURITY] a flaw",
-            "from": "Jane Reporter <jane@aisle.com>",
+            "from": sender,
             "to": f"security@{pmc}.apache.org",
             "message_id": message_id,
             "mailtime": 1700000000,
@@ -57,9 +61,9 @@ def _write_report(data_dir, pmc, label, *, message_id=MESSAGE_ID):
     ]))
 
 
-def _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw", extra="", config=None):
+def _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw", extra="", config=None, sender=REPORTER):
     data_dir = tmp_path / "data"
-    _write_report(data_dir, "cassandra", label)
+    _write_report(data_dir, "cassandra", label, sender=sender)
     (tmp_path / "config.yaml").write_text(
         (config or _CONFIG).format(data_dir=data_dir, state_dir=tmp_path / "state") + extra
     )
@@ -365,6 +369,60 @@ async def test_post_without_fetch_metadata_is_accepted(quart_app, monkeypatch):
     )
 
     assert response.status_code == 200
+
+
+# --- allocating a CVE in cveprocess -----------------------------------------
+
+
+def _allocate_cve_query(body):
+    """The query that the report's "allocate CVE" link hands to cveprocess."""
+    link = re.search(r'href="(https://cveprocess\.apache\.org/allocatecve\?[^"]*)"', body)
+    assert link, "no 'allocate CVE' link on the page"
+    return urllib.parse.parse_qs(urllib.parse.urlsplit(html.unescape(link.group(1))).query)
+
+
+@sync
+async def test_allocate_cve_link_passes_the_reporter(tmp_path, monkeypatch):
+    """So that cveprocess can credit the reporter and Bcc them on the notification emails."""
+    # a '+' has to survive the query string, where it would otherwise read as a space
+    quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
+                           sender="Jane Reporter <jane+asf@aisle.com>")
+    _login(monkeypatch)
+
+    response = await quart_app.test_client().get("/project/cassandra")
+    query = _allocate_cve_query(await response.get_data(as_text=True))
+
+    assert query["reportername"] == ["Jane Reporter"]
+    assert query["reporteremail"] == ["jane+asf@aisle.com"]
+
+
+@sync
+async def test_allocate_cve_link_never_passes_the_address_as_the_name(tmp_path, monkeypatch):
+    """The name ends up in a public credit, so it must not fall back to the address."""
+    quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
+                           sender="jane@aisle.com")
+    _login(monkeypatch)
+
+    response = await quart_app.test_client().get("/project/cassandra")
+    query = _allocate_cve_query(await response.get_data(as_text=True))
+
+    assert "reportername" not in query
+    assert query["reporteremail"] == ["jane@aisle.com"]
+
+
+@sync
+async def test_allocate_cve_link_leaves_out_an_unknown_reporter(tmp_path, monkeypatch):
+    # shouldn't happen with a correctly configured list, but reply_to is optional in the
+    # case data, and without it the reporter behind a sender the list rewrote is unknown
+    quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf cve-allocation",
+                           sender="Jane Reporter via Security <security@cassandra.apache.org>")
+    _login(monkeypatch)
+
+    response = await quart_app.test_client().get("/project/cassandra")
+    query = _allocate_cve_query(await response.get_data(as_text=True))
+
+    assert "reportername" not in query
+    assert "reporteremail" not in query
 
 
 # --- dev mode: extra memberships for local development ----------------------

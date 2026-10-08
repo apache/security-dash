@@ -269,6 +269,11 @@ def test_reporter_returns_none_when_from_missing():
     assert _reporter({}) is None
 
 
+def test_reporter_decodes_an_encoded_name():
+    email = {'from': '=?utf-8?q?Jos=C3=A9_Garc=C3=ADa?= <jose@aisle.com>'}
+    assert _reporter(email) == Reporter(name='José García', email='jose@aisle.com')
+
+
 def test_reporter_initials_from_name():
     assert Reporter(name='Jane Q. Reporter', email='jane@aisle.com').initials == 'JQR'
 
