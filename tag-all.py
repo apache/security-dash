@@ -118,11 +118,11 @@ def parseinbox(verbose, dryrun):
                    subject = "???"
             match = re.search('From:[^<]+<([^\r]+)>', eachmail[1].decode('utf-8'))
             mailfrom = match.group(1) if match else ""
-            match = re.search('Reply-To:\s+(\S+)', eachmail[1].decode('utf-8'))
+            match = re.search(r"Reply-To:\s+(\S+)", eachmail[1].decode('utf-8'))
             replyto = match.group(1) if match else ""            
-            message_id = re.search('Message-ID:\s+(\S+)', eachmail[1].decode('utf-8'), re.IGNORECASE).group(1)
-            thread = re.search('X-GM-THRID (\d+)', eachmail[0].decode('utf-8')).group(1)
-            msgid = re.search('X-GM-MSGID (\d+)', eachmail[0].decode('utf-8')).group(1)
+            message_id = re.search(r"Message-ID:\s+(\S+)", eachmail[1].decode('utf-8'), re.IGNORECASE).group(1)
+            thread = re.search(r"X-GM-THRID (\d+)", eachmail[0].decode('utf-8')).group(1)
+            msgid = re.search(r"X-GM-MSGID (\d+)", eachmail[0].decode('utf-8')).group(1)
 
             if (verbose):
                 print ("** Looking at INBOX msgid %s mail subject: %s" %(msgid, subject))
@@ -150,7 +150,7 @@ def parseinbox(verbose, dryrun):
             if mailfrom == "notifications@github.com" and not "repository-advisories" in message_id:
                 # skip airflow-s notifications so they'll be associated with their
                 # respective thread
-                match = re.search('\[apache\/([^\]]+)',subject)
+                match = re.search(r"\[apache\/([^\]]+)", subject)
                 if match:
                     project = match.group(1)
                     print ("Found a new GitHub notification for %s (but I can't do anything about it yet)" %(project))
@@ -177,7 +177,7 @@ def parseinbox(verbose, dryrun):
                 print ("* No labels found on those messages")
 
             # Okay, let's specially handle CERT VU# stuff
-            for match in re.finditer('(VU#\d+|#YWH-\S+)', subject):
+            for match in re.finditer(r"(VU#\d+|#YWH-\S+)", subject):
                 certvu = match.group(1)
                 if (verbose):
                     print ("** Found CERT VU# on subject line %s" %(certvu))
