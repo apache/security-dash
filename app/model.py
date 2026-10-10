@@ -36,3 +36,11 @@ class RejectReport:
     response: str
 
 
+@dataclasses.dataclass
+class CloseInactiveReport:
+    sender: str
+    sender_name: str
+    pmc: str
+    tag: str
+    message_id: str
+    response: str

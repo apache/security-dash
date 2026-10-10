@@ -25,7 +25,7 @@ from typing import Final
 import aiosmtplib
 
 from app import config
-from app.model import AcceptReport, RejectReport
+from app.model import AcceptReport, CloseInactiveReport, RejectReport
 
 _SMTP_TIMEOUT: Final[int] = 30
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
@@ -128,6 +128,36 @@ def reject_email(rejection: RejectReport, report: dict):
     res.set_content(f'''Dear {reporter},
 
 Thank you for your report. The PMC has determined that the issue you reported is NOT a vulnerability in {project}.
+{additional_comment}
+
+Kind regards,
+
+{signatory}
+''')
+
+    return res
+
+def close_inactive_email(closure: CloseInactiveReport, report: dict):
+    pmc = closure.pmc
+    res = _response(pmc, closure.sender, closure.message_id, report)
+    if closure.response:
+        additional_comment = f"\n{closure.response}\n"
+    else:
+        additional_comment = ""
+
+    reporter, _ = parseaddr(report.get("reply_to") or report["from"])
+
+    # TODO lookup project name mapping
+    project = f"Apache {pmc.capitalize()}"
+
+    if pmc in config.get().pmcs_with_security_emails:
+        signatory = f"{closure.sender_name}\nSecurity Team member for {project}"
+    else:
+        signatory = f"{closure.sender_name}\nPMC member for {project}"
+
+    res.set_content(f'''Dear {reporter},
+
+Since we haven't heard from you on our request for additional information this report is not actionable for us. We have no choice but to close this report from our side, but would be happy to reopen when you can provide the requested information.
 {additional_comment}
 
 Kind regards,
