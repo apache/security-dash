@@ -208,12 +208,22 @@ def parseinbox(verbose, dryrun):
                 for match in re.finditer(r"(CVE-\d+-\d+)", subject):
                     ourcve = match.group(1)
                     if (verbose):
-                        print ("** Found CVE on subject line %s" %(ourcve))
-                    if (len(alllabels) ==0):
+                        print ("** Found CVE on subject line: %s" %(ourcve))
+                    if (len(alllabels) == 0):
                         alllabels = get_all_labels(imap_conn)
                     for label in alllabels:                
                         if ("/"+ourcve in label):
                             cvelabels.append(label)
+                    if not cvelabels:
+                        nresult, ndata = imap_conn.uid('search', None, f"(SUBJECT \"{ourcve} reserved for\")")
+                        if (ndata[0]):
+                            alluids = ",".join(ndata[0].decode('utf-8').split(" "))
+                            nresult, ndata = imap_conn.uid('fetch',alluids, '(UID BODY.PEEK[HEADER.FIELDS (DATE SUBJECT)] X-GM-THRID X-GM-LABELS)')
+                            for neachmail in ndata:
+                                for label in parselabels(neachmail[0]):
+                                    if label.endswith("/aaa-glasswing"):
+                                        cvelabels.append(label)
+
             if (len(cvelabels)>0):
                 if (verbose):
                     print ("** Found threads that match that CVE")
