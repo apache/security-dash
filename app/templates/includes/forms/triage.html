@@ -27,10 +27,19 @@
         Yes, this is a vulnerability
       </label>
       <label>
+        <input type="radio" name="action" value="duplicate" required />
+        Yes, and it's a duplicate of an already-tracked report
+      </label>
+      <label>
         <input type="radio" name="action" value="reject" />
         No, this is not a vulnerability
       </label>
     </fieldset>
+
+    <label class="triage-duplicate-of">
+      CVE id or reference of the original report
+      <input type="text" name="duplicate_of" placeholder="e.g. CVE-2024-12345, or the original report's tag" />
+    </label>
 
     <div class="triage-preview">
       <dl class="triage-headers">
@@ -43,6 +52,7 @@
         <p>
 	  <span>{{ preview.opening }}</span>
 	  <span class="triage-if-accept">{{ preview.decisions['accept'] }}</span>
+	  <span class="triage-if-duplicate">{{ preview.decisions['duplicate'] }}</span>
           <span class="triage-if-reject">{{ preview.decisions['reject'] }}</span>
 	</p>
         <label class="triage-feedback">

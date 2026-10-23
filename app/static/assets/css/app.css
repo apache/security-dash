@@ -315,13 +315,23 @@ footer p {
 /* The sentence the reporter will read is the one the PMC selects. Hidden only
    under .triage-js, for the same reason as the preview above. */
 .triage form.triage-js .triage-if-accept,
-.triage form.triage-js .triage-if-reject {
+.triage form.triage-js .triage-if-reject,
+.triage form.triage-js .triage-if-duplicate {
   display: none;
 }
 
 .triage form.triage-js[data-decision="accept"] .triage-if-accept,
-.triage form.triage-js[data-decision="reject"] .triage-if-reject {
+.triage form.triage-js[data-decision="reject"] .triage-if-reject,
+.triage form.triage-js[data-decision="duplicate"] .triage-if-duplicate {
   display: inline;
+}
+
+.triage form.triage-js .triage-duplicate-of {
+  display: none;
+}
+
+.triage form.triage-js[data-decision="duplicate"] .triage-duplicate-of {
+  display: block;
 }
 
 .triage-feedback {
