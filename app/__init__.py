@@ -80,9 +80,10 @@ _STATE_DESCRIPTIONS: dict[str, str] = {
     "untriaged": "Triage of incoming security reports should happen fairly quickly, because it's the phase in which the PMC decides whether this is an urgent issue. Triage is complete when the PMC decides whether issue is a vulnerability and provides that feedback to the reporter.",
     "reporter": "The PMC or Security Team has requested further information from the reporter. If these details do not appear, you can provide feedback to the reporter that since we haven't received the information the report is not actionable for us, and we have to close it, but we would be happy to reopen when they do provide the requested information",
     "non-issue-feedback": "The PMC has tentatively decided the report doesn't describe a vulnerability, but hasn't made that decision final yet by responding to the reporter",
-    "confirmed": "The PMC has accepted and is working on these issues. For those that don't have CVEs allocated yet, this can be done now",
+    "confirmed": "The PMC has accepted and is working on these issues. For those that don't have CVEs allocated yet, this can be done now. Issues will leave this state when the CVE has been published",
     "disclosure": "A fix for these issues has been released. When you are happy with the advisory in the cveprocess tool, you can send them by moving the state to READY and using the 'Send these Emails' button on the 'OSS/ASF Emails' tab in cveprocess.",
     "non-issue-upstream": "Make sure the issue is fixed upstream and a release is made with the fix, or find an alternative to the problematic upstream component",
+    "non-issue-docs": "Ping security@apache.org when you have updated the documentation to remove items from this state",
     reports.GLASSWING_STATE: "CVEs allocated as part of an internal audit rather than reported independently.",
     reports.NOT_FORWARDED_STATE: "Reports the security team received about this project but has not forwarded to the PMC, because earlier reports from the same reporter were of particularly low quality. Ask security@apache.org if you want one of these forwarded anyway",
 }
