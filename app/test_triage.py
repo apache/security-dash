@@ -128,7 +128,67 @@ def test_non_text_feedback_is_rejected():
     with pytest.raises(TriageError):
         _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw", "feedback": {"a": 1}})
 
+def test_duplicate_carries_duplicate_of():
+    decision = _decide({
+        "message_id": "<abc@cassandra.apache.org>",
+        "action": "duplicate",
+        "tag": "2024-03-01 a flaw",
+        "duplicate_of": "CVE-2024-12345",
+    })
+    assert decision.action is TriageAction.DUPLICATE
+    assert decision.duplicate_of == "CVE-2024-12345"
 
+
+def test_duplicate_of_is_stripped():
+    decision = _decide({
+        "message_id": "<abc@cassandra.apache.org>",
+        "action": "duplicate",
+        "tag": "2024-03-01 a flaw",
+        "duplicate_of": "  CVE-2024-12345  ",
+    })
+    assert decision.duplicate_of == "CVE-2024-12345"
+
+
+def test_duplicate_without_duplicate_of_is_rejected():
+    with pytest.raises(TriageError) as e:
+        _decide({"message_id": "<abc@cassandra.apache.org>", "action": "duplicate", "tag": "2024-03-01 a flaw"})
+    assert e.value.status == 400
+
+
+def test_duplicate_of_blank_is_rejected():
+    with pytest.raises(TriageError):
+        _decide({
+            "message_id": "<abc@cassandra.apache.org>",
+            "action": "duplicate",
+            "tag": "2024-03-01 a flaw",
+            "duplicate_of": "   ",
+        })
+
+
+def test_duplicate_of_is_optional_for_accept():
+    assert _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw"}).duplicate_of == ""
+
+
+def test_overlong_duplicate_of_is_rejected():
+    with pytest.raises(TriageError) as e:
+        _decide({
+            "message_id": "<abc@cassandra.apache.org>",
+            "tag": "2024-03-01 a flaw",
+            "action": "duplicate",
+            "duplicate_of": "x" * (triage.MAX_DUPLICATE_OF_LENGTH + 1),
+        })
+    assert e.value.status == 413
+
+
+def test_non_text_duplicate_of_is_rejected():
+    with pytest.raises(TriageError):
+        _decide({
+            "message_id": "<abc@cassandra.apache.org>",
+            "action": "duplicate",
+            "tag": "2024-03-01 a flaw",
+            "duplicate_of": {"a": 1},
+        })
+        
 class _FakeResponse:
     """Just enough of an aiohttp response for `submit`."""
 
@@ -206,6 +266,30 @@ def test_submit_posts_a_reject_report_to_the_reject_endpoint(monkeypatch):
     assert url == "http://backend:5002/triage/reject"
     assert body["response"] == ""
 
+def test_submit_posts_a_duplicate_as_an_accept_report(monkeypatch):
+    posts = _submit(monkeypatch, {
+        "message_id": "<abc@cassandra.apache.org>",
+        "action": "duplicate",
+        "tag": "2024-03-01 a flaw",
+        "duplicate_of": "CVE-2024-12345",
+    })
+
+    url, body = posts[0]
+    assert url == "http://backend:5002/triage/accept"
+    assert body["response"] == "Duplicate of CVE-2024-12345."
+
+
+def test_submit_a_duplicate_keeps_the_pmcs_own_feedback(monkeypatch):
+    posts = _submit(monkeypatch, {
+        "message_id": "<abc@cassandra.apache.org>",
+        "action": "duplicate",
+        "tag": "2024-03-01 a flaw",
+        "duplicate_of": "CVE-2024-12345",
+        "feedback": "Thanks for the report!",
+    })
+
+    url, body = posts[0]
+    assert body["response"] == "Duplicate of CVE-2024-12345.\n\nThanks for the report!"
 
 def test_submit_does_not_double_the_slash_of_a_backend_url(monkeypatch):
     posts = _submit(
@@ -277,10 +361,18 @@ def test_preview_replies_to_the_report_subject():
 
 def test_preview_has_a_paragraph_for_each_action():
     decisions = _preview().decisions
-    assert set(decisions) == {"accept", "reject"}
+    assert set(decisions) == {"accept", "reject", "duplicate"}
     assert "Cassandra" in decisions["reject"]
     assert all(text for text in decisions.values())
 
+def test_preview_duplicate_paragraph_names_the_reference():
+    preview = triage.message_preview("cassandra", _report(), "J. Doe", duplicate_of="CVE-2024-12345")
+    assert "CVE-2024-12345" in preview.decisions["duplicate"]
+
+
+def test_preview_duplicate_paragraph_has_a_fallback_without_a_reference():
+    preview = triage.message_preview("cassandra", _report(), "J. Doe")
+    assert "another report" in preview.decisions["duplicate"]
 
 def test_preview_is_signed_by_the_pmc_member_taking_the_decision():
     assert _preview(signatory="J. Doe").closing == (
