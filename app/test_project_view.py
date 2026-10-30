@@ -130,6 +130,18 @@ async def test_untriaged_report_gets_a_triage_form(quart_app, monkeypatch):
 
 
 @sync
+async def test_triage_form_links_to_allocate_a_cve(quart_app, monkeypatch):
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert 'class="triage-if-accept"' in body
+    assert 'href="https://cveprocess.apache.org/allocatecve?pmc=cassandra' in body
+    assert "messageid=%3Cabc%40cassandra.apache.org%3E" in body
+    assert ">Allocate a CVE</a>" in body
+
+
+@sync
 async def test_triage_control_sits_in_the_report_row(quart_app, monkeypatch):
     _login(monkeypatch)
     response = await quart_app.test_client().get("/project/cassandra")

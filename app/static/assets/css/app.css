@@ -266,10 +266,14 @@ footer p {
 }
 
 .triage-decision label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.3rem;
-  margin-right: 1rem;
+}
+
+/* Sits under the accept option, not between the two of them. */
+.triage-decision .triage-if-accept {
+  margin: 0 0 0.4rem 1.1rem;
 }
 
 .triage-preview {
