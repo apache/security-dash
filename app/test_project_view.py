@@ -318,8 +318,33 @@ async def test_triage_requires_a_login(quart_app, monkeypatch):
         json={"message_id": MESSAGE_ID, "action": "accept"},
     )
 
-    # anonymous callers are bounced into the OAuth login, as on the other endpoints
-    assert response.status_code == 302
+    assert response.status_code == 401
+    assert (await response.get_json())["message"] == "You need to be logged in to access this endpoint."
+
+
+@sync
+async def test_triage_form_has_a_status_element(quart_app, monkeypatch):
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert 'class="triage-status"' in body
+    assert 'aria-live="polite"' in body
+
+
+@sync
+async def test_triage_json_success_includes_a_redirect(quart_app, monkeypatch):
+    _login(monkeypatch)
+    response = await _triage(
+        quart_app.test_client(),
+        {"message_id": MESSAGE_ID, "action": "accept", "tag": "2024-03-01 a flaw"},
+        headers={"Accept": "application/json"},
+    )
+
+    assert response.status_code == 200
+    body = await response.get_json()
+    assert body["status"] == "success"
+    assert body["redirect"] == "/project/cassandra"
 
 
 @sync

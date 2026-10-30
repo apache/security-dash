@@ -345,6 +345,18 @@ footer p {
   margin-top: 0.75rem;
 }
 
+.triage-status {
+  margin-top: 0.75rem;
+}
+
+.triage-status:empty {
+  display: none;
+}
+
+.triage-status.triage-error {
+  color: #a12a2a;
+}
+
 .triage-actions button {
   padding: 0.35rem 0.75rem;
   font: inherit;
