@@ -42,6 +42,7 @@ class TriageAction(enum.StrEnum):
     DUPLICATE = "duplicate"
 
 MAX_FEEDBACK_LENGTH = 10_000
+_DUPLICATE_SENTINEL = "\x00"
 MAX_DUPLICATE_OF_LENGTH = 200
 
 # The notification API owns the real email template; these are the static parts
@@ -80,6 +81,12 @@ class MessagePreview:
     opening: str
     decisions: dict[str, str]
     """The paragraph each action produces, keyed by action value."""
+    duplicate_prefix: str
+    """Text of the duplicate paragraph up to where the PMC's typed CVE/
+    reference belongs. duplicate_suffix picks up right after it, so the
+    template can render the actual input inline in the preview — what is
+    shown is exactly what will be sent, no separate copy to keep in sync."""
+    duplicate_suffix: str
     closing: str
     """Sign-off, naming the PMC member who took the decision."""
 
@@ -114,6 +121,18 @@ def message_preview(
     report, shown in the preview when the PMC picks the duplicate action; it is
     ignored for the other actions.
     """
+    decisions = {
+        action.value: paragraph.format(
+            project=_display_project(project),
+            duplicate_of=duplicate_of or "another report",
+        )
+        for action, paragraph in _DECISION_PARAGRAPHS.items()
+    }
+    duplicate_prefix, duplicate_suffix = _DECISION_PARAGRAPHS[TriageAction.DUPLICATE].format(
+        project=_display_project(project),
+        duplicate_of=_DUPLICATE_SENTINEL,
+    ).split(_DUPLICATE_SENTINEL)
+
     return MessagePreview(
         to=report.reporter.tooltip if report.reporter else "the reporter",
         cc=_cc_addresses(project),
@@ -122,13 +141,9 @@ def message_preview(
             reporter=report.reporter.display_name if report.reporter else "reporter"
         ),
         opening=_OPENING.format(project=_display_project(project)),
-        decisions={
-            action.value: paragraph.format(
-                project=_display_project(project),
-                duplicate_of=duplicate_of or "another report",
-            )
-            for action, paragraph in _DECISION_PARAGRAPHS.items()
-        },
+        decisions=decisions,
+        duplicate_prefix=duplicate_prefix,
+        duplicate_suffix=duplicate_suffix,
         closing=_closing(project, signatory),
     )
 

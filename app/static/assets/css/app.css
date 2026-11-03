@@ -326,12 +326,9 @@ footer p {
   display: inline;
 }
 
-.triage form.triage-js .triage-duplicate-of {
-  display: none;
-}
-
-.triage form.triage-js[data-decision="duplicate"] .triage-duplicate-of {
-  display: block;
+.triage-if-duplicate input[name="duplicate_of"] {
+  font: inherit;
+  padding: 0.1rem 0.3rem;
 }
 
 .triage-feedback {

@@ -378,3 +378,14 @@ def test_preview_is_signed_by_the_pmc_member_taking_the_decision():
     assert _preview(signatory="J. Doe").closing == (
         "Kind regards,\nJ. Doe\nPMC member for Apache Cassandra"
     )
+
+def test_preview_duplicate_prefix_and_suffix_surround_the_reference():
+    preview = triage.message_preview("cassandra", _report(), "J. Doe")
+    assert preview.duplicate_prefix.endswith("already-tracked report (")
+    assert preview.duplicate_suffix.startswith(")")
+
+
+def test_preview_duplicate_prefix_and_suffix_do_not_contain_each_other():
+    preview = triage.message_preview("cassandra", _report(), "J. Doe")
+    assert "duplicate_of" not in preview.duplicate_prefix
+    assert "duplicate_of" not in preview.duplicate_suffix
