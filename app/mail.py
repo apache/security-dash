@@ -95,9 +95,20 @@ def accept_email(acceptance: AcceptReport, report: dict):
     else:
         signatory = f"{acceptance.sender_name}\nPMC member for {project}"
 
-    res.set_content(f'''Dear {reporter},
+    if acceptance.duplicate_of:
+        res.set_content(f'''Dear {reporter},
 
-Thank you for your report.  The PMC has confirmed the issue you reported as a vulnerability and is working on a fix. You will be notified once a release containing the fix is available, and are asked to keep the report confidential until then.
+Thank you for your report. The PMC has confirmed the issue you reported as a vulnerability, a duplicate of an already-tracked report ({acceptance.duplicate_of}), and is working on a fix. You will be notified once a release containing the fix is available, and are asked to keep the report confidential until then.
+{additional_comment}
+
+Kind regards,
+
+{signatory}
+''')
+    else:
+        res.set_content(f'''Dear {reporter},
+
+Thank you for your report. The PMC has confirmed the issue you reported as a vulnerability and is working on a fix. You will be notified once a release containing the fix is available, and are asked to keep the report confidential until then.
 {additional_comment}
 
 Kind regards,

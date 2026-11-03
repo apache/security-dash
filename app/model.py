@@ -25,6 +25,7 @@ class AcceptReport:
     tag: str
     message_id: str
     response: str
+    duplicate_of: str
 
 @dataclasses.dataclass
 class RejectReport:
