@@ -54,18 +54,19 @@ _OPENING = "Thank you for your report."
 _DECISION_PARAGRAPHS: dict[TriageAction, str] = {
     TriageAction.ACCEPT: (
         "The PMC has confirmed the issue you reported as a vulnerability and is "
-        "working on a fix. You will be notified once a release containing the fix "
-        "is available, and are asked to keep the report confidential until then."
+        "working on a fix. "
+        "You will be notified once a release containing the fix is available, "
+        "and are asked to keep the report confidential until then."
     ),
     TriageAction.REJECT: (
         "The PMC has determined that the issue you reported is NOT a vulnerability "
         "in Apache {project}."
     ),
     TriageAction.DUPLICATE: (
-        "The PMC has confirmed that the issue you reported is a duplicate of an "
-        "already-tracked report ({duplicate_of}) and is working on a fix. You will "
-        "be notified once a release containing the fix is available, and are asked "
-        "to keep the report confidential until then."
+        "The PMC has confirmed the issue you reported as a vulnerability, a duplicate "
+        "of an already-tracked report ({duplicate_of}), and is working on a fix. "
+        "You will be notified once a release containing the fix is available, "
+        "and are asked to keep the report confidential until then."
     ),
 }
 _CLOSING_GREETING = "Kind regards,"
@@ -222,14 +223,16 @@ def parse_decision(
     if len(feedback) > MAX_FEEDBACK_LENGTH:
         raise TriageError(f"feedback is longer than {MAX_FEEDBACK_LENGTH} characters", status=413)
 
-    duplicate_of = payload.get("duplicate_of") or ""
-    if not isinstance(duplicate_of, str):
-        raise TriageError("'duplicate_of' must be text")
-    duplicate_of = duplicate_of.strip()
-    if len(duplicate_of) > MAX_DUPLICATE_OF_LENGTH:
-        raise TriageError(f"'duplicate_of' is longer than {MAX_DUPLICATE_OF_LENGTH} characters", status=413)
-    if action == TriageAction.DUPLICATE and not duplicate_of:
-        raise TriageError("'duplicate_of' is required when action is 'duplicate'")
+    duplicate_of = None
+    if action == TriageAction.DUPLICATE:
+        duplicate_of = payload.get("duplicate_of") or ""
+        if not isinstance(duplicate_of, str):
+            raise TriageError("'duplicate_of' must be text")
+        duplicate_of = duplicate_of.strip()
+        if len(duplicate_of) > MAX_DUPLICATE_OF_LENGTH:
+            raise TriageError(f"'duplicate_of' is longer than {MAX_DUPLICATE_OF_LENGTH} characters", status=413)
+        if not duplicate_of:
+            raise TriageError("'duplicate_of' is required when action is 'duplicate'")
 
     return TriageDecision(
         project=project,
@@ -256,6 +259,7 @@ class AcceptReport:
     message_id: str
     response: str
     """Feedback for the reporter; may be empty."""
+    duplicate_of: str
 
 @dataclasses.dataclass(frozen=True)
 class RejectReport:
@@ -271,6 +275,7 @@ class RejectReport:
     message_id: str
     response: str
     """Feedback for the reporter; may be empty."""
+    duplicate_of: str
 
 _ENDPOINTS: dict[TriageAction, tuple[str, type]] = {
     TriageAction.ACCEPT: ("/triage/accept", AcceptReport),
@@ -284,18 +289,6 @@ _UNAVAILABLE = (
     "The decision could not be handed to the notification API, so the reporter "
     "was not notified. Please try again, or email security@apache.org."
 )
-
-def _response_text(decision: TriageDecision) -> str:
-    """The text handed to the notification API as the PMC's response.
-
-    For a duplicate, the reference to the original report/CVE is prepended, so
-    it's preserved even though the notification API has no dedicated field for
-    it yet.
-    """
-    if decision.action != TriageAction.DUPLICATE:
-        return decision.feedback
-    note = f"Duplicate of {decision.duplicate_of}."
-    return f"{note}\n\n{decision.feedback}" if decision.feedback else note
 
 async def submit(decision: TriageDecision) -> None:
     """Hand `decision` to the notification API.
@@ -312,7 +305,8 @@ async def submit(decision: TriageDecision) -> None:
         pmc=decision.project,
         tag=decision.report.security_team_name,
         message_id=decision.report.message_id,
-        response=_response_text(decision),
+        response=decision.feedback,
+        duplicate_of=decision.duplicate_of,
     )
 
     timeout = aiohttp.ClientTimeout(total=SUBMIT_TIMEOUT_SECONDS)
@@ -330,4 +324,3 @@ async def submit(decision: TriageDecision) -> None:
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
         print(f"Notification API at {url} could not be reached: {e!r}")
         raise TriageUnavailable(_UNAVAILABLE) from e
-    

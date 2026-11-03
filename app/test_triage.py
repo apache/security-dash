@@ -166,7 +166,7 @@ def test_duplicate_of_blank_is_rejected():
 
 
 def test_duplicate_of_is_optional_for_accept():
-    assert _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw"}).duplicate_of == ""
+    assert _decide({"message_id": "<abc@cassandra.apache.org>", "action": "accept", "tag": "2024-03-01 a flaw"}).duplicate_of == None
 
 
 def test_overlong_duplicate_of_is_rejected():
@@ -255,6 +255,30 @@ def test_submit_posts_an_accept_report_to_the_notification_api(monkeypatch):
             "tag": "2024-03-01 a flaw",
             "message_id": "<abc@cassandra.apache.org>",
             "response": "Thanks, we agree this is a vulnerability.",
+            "duplicate_of": None,
+        },
+    )]
+
+
+def test_submit_posts_an_accept_report_without_duplicate(monkeypatch):
+    posts = _submit(monkeypatch, {
+        "message_id": "<abc@cassandra.apache.org>",
+        "action": "accept",
+        "tag": "2024-03-01 a flaw",
+        "feedback": "Thanks, we agree this is a vulnerability.",
+        "duplicate_of": "CVE-42",
+    })
+
+    assert posts == [(
+        "http://backend:5002/triage/accept",
+        {
+            "sender": "jdoe",
+            "sender_name": "John Doe",
+            "pmc": "cassandra",
+            "tag": "2024-03-01 a flaw",
+            "message_id": "<abc@cassandra.apache.org>",
+            "response": "Thanks, we agree this is a vulnerability.",
+            "duplicate_of": None,
         },
     )]
 
@@ -276,7 +300,7 @@ def test_submit_posts_a_duplicate_as_an_accept_report(monkeypatch):
 
     url, body = posts[0]
     assert url == "http://backend:5002/triage/accept"
-    assert body["response"] == "Duplicate of CVE-2024-12345."
+    assert body["duplicate_of"] == "CVE-2024-12345"
 
 
 def test_submit_a_duplicate_keeps_the_pmcs_own_feedback(monkeypatch):
@@ -289,7 +313,8 @@ def test_submit_a_duplicate_keeps_the_pmcs_own_feedback(monkeypatch):
     })
 
     url, body = posts[0]
-    assert body["response"] == "Duplicate of CVE-2024-12345.\n\nThanks for the report!"
+    assert body["duplicate_of"] == "CVE-2024-12345"
+    assert body["response"] == "Thanks for the report!"
 
 def test_submit_does_not_double_the_slash_of_a_backend_url(monkeypatch):
     posts = _submit(
