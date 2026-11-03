@@ -18,10 +18,10 @@
 """Security issue dashboard API for the Apache Software Foundation"""
 
 from app.config import AppConfig
-from app.model import AcceptReport, RejectReport
+from app.model import AcceptReport, CloseInactiveReport, RejectReport
 from app import config
 import asfquart
-from app.mail import accept_email, reject_email, send_email, valid_pmc, valid_sender
+from app.mail import accept_email, close_inactive_email, reject_email, send_email, valid_pmc, valid_sender
 import json
 import os
 import pathlib
@@ -90,6 +90,29 @@ async def reject(data: RejectReport):
         report = js[0]
 
     email = reject_email(data, report)
+    ok = await send_email(email)
+    if ok:
+        return quart.jsonify({'success': True})
+    else:
+        quart.abort(500)
+        return
+
+
+@API.route("/triage/close-inactive", methods=["POST"])
+@quart_schema.validate_request(CloseInactiveReport)
+async def close_inactive(data: CloseInactiveReport):
+    if not valid_pmc(data.pmc) or not valid_sender(data.sender):
+        quart.abort(400)
+        return
+    info = _get_report_info(data.pmc, data.tag, data.message_id)
+    if not info.exists():
+        quart.abort(404)
+        return
+    with open(info) as f:
+        js = json.loads(f.read())
+        report = js[0]
+
+    email = close_inactive_email(data, report)
     ok = await send_email(email)
     if ok:
         return quart.jsonify({'success': True})
