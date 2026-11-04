@@ -50,7 +50,7 @@ def _get_report_info(pmc: str, tag: str, _message_id: str):
     return info
 
 @API.errorhandler(quart_schema.RequestSchemaValidationError)
-async def log_schema_error(e: RequestSchemaValidationError):
+async def log_schema_error(e: quart_schema.RequestSchemaValidationError):
     print(
         f"quart schema error on {quart.request.path}: {e.validation_error}"
     )
