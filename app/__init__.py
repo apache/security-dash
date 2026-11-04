@@ -49,6 +49,13 @@ def _get_report_info(pmc: str, tag: str, _message_id: str):
         raise ValueError(f"Report tag escapes the data directory: {tag!r}")
     return info
 
+@API.errorhandler(quart_schema.RequestSchemaValidationError)
+async def log_schema_error(e: RequestSchemaValidationError):
+    print(
+        f"quart schema error on {quart.request.path}: {e.validation_error}"
+    )
+    return e
+
 @API.route("/triage/accept", methods=["POST"])
 @quart_schema.validate_request(AcceptReport)
 async def accept(data: AcceptReport):
