@@ -16,6 +16,7 @@
 # under the License.
 
 import dataclasses
+from typing import Optional
 
 @dataclasses.dataclass
 class AcceptReport:
@@ -25,7 +26,7 @@ class AcceptReport:
     tag: str
     message_id: str
     response: str
-    duplicate_of: str
+    duplicate_of: Optional[str] = None
 
 @dataclasses.dataclass
 class RejectReport:
