@@ -60,6 +60,8 @@ def _response(pmc: str, sender: str, message_id: str, report: dict):
     res["From"] = f"{sender}@apache.org"
     res["Subject"] = _header_value(f"Re: {report["subj"]}")
     res["To"] = _header_value(report.get("reply_to") or report["from"])
+    res["X-Mailer"] = "security-dash"
+    res["Security-Dash-PMC"] = pmc
 
     list_name = config.get().pmc_list_names.get(pmc) or pmc
     if pmc in config.get().pmcs_with_security_emails:
@@ -79,6 +81,7 @@ def _response(pmc: str, sender: str, message_id: str, report: dict):
 def accept_email(acceptance: AcceptReport, report: dict):
     pmc = acceptance.pmc
     res = _response(pmc, acceptance.sender, acceptance.message_id, report)
+    res["Security-Dash-Disposition"] = "accept"
 
     if acceptance.response:
         additional_comment = f"\n{acceptance.response}\n"
@@ -121,6 +124,8 @@ Kind regards,
 def reject_email(rejection: RejectReport, report: dict):
     pmc = rejection.pmc
     res = _response(pmc, rejection.sender, rejection.message_id, report)
+    res["Security-Dash-Disposition"] = "reject"
+
     if rejection.response:
         additional_comment = f"\n{rejection.response}\n"
     else:
@@ -185,6 +190,7 @@ async def send_email(email: EmailMessage) -> bool:
         print(f"[dev] sending email to {email['To']}:\n{email}")
         return True
     else:
+        print(f"sending email with subject '{email['Subject']}'")
         errors, response = await aiosmtplib.send(
             email, hostname=smtp_config.host, port=smtp_config.port, timeout=_SMTP_TIMEOUT, start_tls=True
         )
