@@ -3,7 +3,7 @@ import json
 import types
 
 from app import reports
-from app.reports import Reporter, ThreadLink, _project_link, _reporter, _load_pmc_report, load_pmc_report, load_pmc_reports
+from app.reports import CaseName, Reporter, ThreadLink, _project_link, _reporter, _load_pmc_report, load_pmc_report, load_pmc_reports
 
 
 def _write_report(path, label, *, subj="[SECURITY] a flaw"):
@@ -54,6 +54,43 @@ def test_subproject_none_when_no_prefix(tmp_path, monkeypatch):
     path = _write_report(tmp_path, "single")
     report = load_pmc_report("commons", path)
     assert report.subproject is None
+
+
+def test_case_name_with_date_and_state():
+    case = CaseName.parse("2024-03-01 native 123 a flaw wf non-issue-docs")
+    assert case == CaseName(
+        stem="2024-03-01 native 123 a flaw",
+        cves=(),
+        date="2024-03-01",
+        words="native 123 a flaw",
+        state="non-issue-docs",
+    )
+    assert case.subproject == "native"
+    assert case.label == "2024-03-01 native 123 a flaw"
+
+
+def test_case_name_with_cves():
+    case = CaseName.parse("CVE-2024-1234 CVE-2024-5678 42 a flaw wf disclosure")
+    assert case.cves == ("CVE-2024-1234", "CVE-2024-5678")
+    assert case.date is None
+    assert case.issue_number == "42"
+    assert case.state == "disclosure"
+    # a case with a CVE is referred to by the CVE
+    assert case.label is None
+
+
+def test_case_name_without_prefix():
+    case = CaseName.parse("aaa-support")
+    assert (case.cves, case.date, case.state) == ((), None, None)
+    assert case.subproject is None
+    assert case.issue_number is None
+    assert case.label == "aaa-support"
+
+
+def test_case_name_state_is_taken_after_the_last_wf():
+    case = CaseName.parse("2024-03-01 wf a wf b wf disclosure")
+    assert case.state == "disclosure"
+    assert case.stem == "2024-03-01 wf a wf b"
 
 
 def _full_config(tmp_path, pmcs_in_attic=()):
@@ -128,7 +165,7 @@ def test_asf_member_link_non_apache_to_uses_security_apache_org(tmp_path, monkey
     )
 
 def _asf_member_link(pmc, email):
-    return _load_pmc_report(pmc, "2026-09-09 foo", [], [ email ]).asf_member_link
+    return _load_pmc_report(pmc, "2026-09-09 foo", [ email ]).asf_member_link
 
 def test_asf_member_link_apache_to_uses_to_domain(tmp_path, monkeypatch):
     monkeypatch.setattr(
@@ -294,7 +331,7 @@ def _email(subj, message_id):
 
 def test_replies_are_not_reported_as_duplicates(tmp_path, monkeypatch):
     monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
-    report = _load_pmc_report("cassandra", "2026-09-09 foo", [], [
+    report = _load_pmc_report("cassandra", "2026-09-09 foo", [
         _email("[SECURITY] a flaw", "<a@aisle.com>"),
         _email("Re: [SECURITY] a flaw", "<b@cassandra.apache.org>"),
         _email("RE: Re:  a   FLAW", "<c@cassandra.apache.org>"),
@@ -304,7 +341,7 @@ def test_replies_are_not_reported_as_duplicates(tmp_path, monkeypatch):
 
 def test_distinct_threads_in_one_report_are_all_linked(tmp_path, monkeypatch):
     monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
-    report = _load_pmc_report("cassandra", "2026-09-09 foo", [], [
+    report = _load_pmc_report("cassandra", "2026-09-09 foo", [
         _email("[SECURITY] SQL injection in search", "<a@aisle.com>"),
         _email("Possible SQLi found in /search", "<b@example.net>"),
         _email("Re: Possible SQLi found in /search", "<c@cassandra.apache.org>"),

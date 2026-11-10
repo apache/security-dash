@@ -15,7 +15,6 @@
     <tbody>
       {% for report in reports|sort(attribute='date') %}
       <tr>
-        <!-- {{ report.security_team_name }} -->
         <td class="reports-date">{{ report.date.strftime('%Y-%m-%d') }}</td>
         {% if show_subproject %}
         <td class="reports-subproject">{{ report.subproject or "" }}</td>
@@ -45,6 +44,9 @@
         </td>
         <td class="reports-title">
           <a href="{{ report.link }}" title="{{ report.title }}">{{ report.title }}</a>
+          {% if report.label %}
+          <div class="reports-label" title="{{ report.label }}">{{ report.label }}</div>
+          {% endif %}
           {% if report.duplicates %}
           <details class="reports-duplicates">
             <summary>+{{ report.duplicates|length }} more thread{{ 's' if report.duplicates|length > 1 else '' }}</summary>

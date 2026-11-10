@@ -77,11 +77,77 @@ class ThreadLink:
     title: str
     link: str
 
+_CVES_PREFIX_RE = re.compile(r"(?:CVE-\S+\s+)*CVE-\S+")
+_DATE_PREFIX_RE = re.compile(r"\d{4}-\d{2}-\d{2}(?=\s|$)")
+_WAITING_FOR_SEPARATOR = " wf "
+
+@dataclasses.dataclass(frozen=True)
+class CaseName:
+    """The classification carried by the name of a case file,
+       as described in docs/README.md under "File names"."""
+    stem: str
+    """The name without its `wf <state>` suffix."""
+    cves: tuple[str, ...]
+    """CVE IDs the name starts with."""
+    date: str | None
+    """`YYYY-MM-DD` the name starts with, when it has no CVE IDs."""
+    words: str
+    """What follows the CVE IDs or date: subproject, issue number and free text."""
+    state: str | None
+    """`<state>` of the `wf <state>` suffix."""
+
+    @classmethod
+    def parse(cls, name: str) -> "CaseName":
+        """Parse a case file name, without its `.json` extension."""
+        stem, sep, state = name.rpartition(_WAITING_FOR_SEPARATOR)
+        if not sep:
+            stem, state = name, None
+
+        cves: tuple[str, ...] = ()
+        date = None
+        words = stem
+        if m := _CVES_PREFIX_RE.match(stem):
+            cves = tuple(m.group(0).split())
+            words = stem[m.end():]
+        elif m := _DATE_PREFIX_RE.match(stem):
+            date = m.group(0)
+            words = stem[m.end():]
+
+        return cls(stem, cves, date, words.strip(), state)
+
+    @property
+    def has_prefix(self) -> bool:
+        return bool(self.cves or self.date)
+
+    @property
+    def subproject(self) -> str | None:
+        """The word after the CVE IDs or date, which names the subproject
+           for the PMCs that have any."""
+        m = re.match(r"\w+", self.words) if self.has_prefix else None
+        return m.group(0) if m else None
+
+    @property
+    def issue_number(self) -> str | None:
+        """The issue tracking the case, if the token after the CVE IDs or date is a number."""
+        m = re.match(r"(\d+)\s", self.words) if self.has_prefix else None
+        return m.group(1) if m else None
+
+    @property
+    def label(self) -> str | None:
+        """The label to show the PMC, to refer to the case by.
+
+        The `wf <state>` suffix is left out, as the page already conveys it.
+        A case with a CVE is referred to by the CVE, so it has no label to show."""
+        return None if self.cves else self.stem
+
 @dataclasses.dataclass(frozen=True)
 class Report:
     security_team_name: str
-    """internal label the security team assigned to the thread,
-       this is not a secret but not meant for external communication"""
+    """Label the security team assigned to the thread.
+       It is shown to the PMC, as a reference to the case in their
+       communication with the security team, so it is not secret,
+       but it is not meant for the reporter either.
+       It doubles as the tag a triage decision is matched against."""
     cves: list[str]
     github: (str, str)
     """If this project tracks security issues in private GitHub issues, the GitHub issue link (title and url)"""
@@ -105,6 +171,8 @@ class Report:
     timestamp: datetime.datetime
     duplicates: tuple[ThreadLink, ...] = ()
     """Other threads collapsed into this report, earliest first."""
+    label: str | None = None
+    """The label to show the PMC, to refer to the case by; see CaseName.label."""
 
     @property
     def date(self) -> datetime.date:
@@ -214,17 +282,14 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
     with open(path) as f:
         emails = json.loads(f.read())
 
-    m = re.match(r"(?:CVE-\S+\s+)*CVE-\S+", path.name)
-    cves = m.group(0).split() if m else []
+    return _load_pmc_report(pmc, path.stem, emails)
 
-    return _load_pmc_report(pmc, path.name[:-5], cves, emails)
+def _load_pmc_report(pmc: str, name: str, emails: list[object]) -> Report | None:
+    case = CaseName.parse(name)
 
-def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object]) -> Report | None:
     jira = None
-    if pmc in config.get().pmcs_using_jira:
-        m = re.match(r"\S+ (\d+) .*", name)
-        if m:
-            jira = config.get().pmcs_using_jira[pmc] + "-" + m.group(1)
+    if pmc in config.get().pmcs_using_jira and case.issue_number:
+        jira = config.get().pmcs_using_jira[pmc] + "-" + case.issue_number
 
     github = None
     if pmc in config.get().pmcs_using_github:
@@ -235,20 +300,10 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
                 github = (f"#{issue_nr}", f"https://github.com/{config.get().pmcs_using_github[pmc]}/issues/{issue_nr}")
                 break
 
-    if cves:
+    if case.cves or case.state == "cve-allocation":
         state = "confirmed"
     else:
-        m = re.match(r".*wf (.*)", name)
-        if not m:
-            state = "untriaged"
-        elif m.groups()[0] == "cve-allocation":
-            state = "confirmed"
-        else:
-            state = m.groups()[0]
-
-    # the subproject is the word after the leading date or CVE(s)
-    m = re.match(r"(?:(?:CVE-\S+\s+)*CVE-\S+|\d{4}-\d{2}-\d{2})\s+(\w+)", name)
-    subproject = m.group(1) if m else None
+        state = case.state or "untriaged"
 
     if not emails:
         print(f"Empty label: {name}")
@@ -268,7 +323,7 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
 
     return Report(
         name,
-        cves,
+        list(case.cves),
         github,
         jira,
         title,
@@ -277,9 +332,10 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         link,
         _reporter(first_email),
         state,
-        subproject,
+        case.subproject,
         datetime.datetime.fromtimestamp(first_email['mailtime'], tz=datetime.timezone.utc),
         duplicates=duplicates,
+        label=case.label,
     )
 
 def _read_emails(path: pathlib.Path) -> list[object]:
@@ -316,6 +372,8 @@ def _label_report(pmc: str, name: str, cves: list[str], email, state: str) -> Re
         state,
         None,
         datetime.datetime.fromtimestamp(email['mailtime'], tz=datetime.timezone.utc),
+        # the name of these labels is a plain topic, but a CVE still replaces it
+        label=None if cves else name.removesuffix(".json"),
     )
 
 def _load_glasswing_reports(pmc: str, path: pathlib.Path) -> list[Report]:
