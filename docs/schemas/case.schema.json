@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://security.apache.org/schemas/dashboard/case.schema.json",
   "title": "Security issue case",
-  "description": "One JSON file under the dashboard's `data_dir`, holding the header metadata of every email linked to a single security issue: the original report, any duplicate reports of the same issue, and follow-ups that are not part of the same mail thread. The file name carries the classification (CVE ids, date, subproject, workflow state); the contents carry only header metadata, never message bodies.",
+  "description": "One JSON file under the dashboard's `data_dir`, holding the header metadata of every email linked to a single security issue: the original report, any duplicate reports of the same issue, and follow-ups that are not part of the same mail thread. The file name carries the classification (CVE ids, date, subproject, the state it is waiting for); the contents carry only header metadata, never message bodies.",
   "type": "array",
   "minItems": 1,
   "items": {

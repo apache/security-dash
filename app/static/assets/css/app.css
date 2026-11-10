@@ -185,6 +185,14 @@ footer p {
   white-space: nowrap;
 }
 
+.reports-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--bs-font-monospace, monospace);
+  color: #6c757d;
+  user-select: all;
+}
+
 .reports-duplicates {
   margin-top: 2px;
   font-size: 0.85em;

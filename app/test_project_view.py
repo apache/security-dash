@@ -142,6 +142,50 @@ async def test_triage_form_links_to_allocate_a_cve(quart_app, monkeypatch):
 
 
 @sync
+async def test_report_shows_its_label(quart_app, monkeypatch):
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert '<div class="reports-label" title="2024-03-01 a flaw">2024-03-01 a flaw</div>' in body
+
+
+@sync
+async def test_label_is_shown_without_its_state(tmp_path, monkeypatch):
+    quart_app = _build_app(tmp_path, monkeypatch, label="2024-03-01 a flaw wf non-issue-docs")
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert '<div class="reports-label" title="2024-03-01 a flaw">2024-03-01 a flaw</div>' in body
+    # the triage tag is left untouched, as the notification API knows it
+    assert 'name="tag" value="2024-03-01 a flaw wf non-issue-docs"' in body
+
+
+@sync
+async def test_report_with_a_cve_shows_no_label(tmp_path, monkeypatch):
+    quart_app = _build_app(tmp_path, monkeypatch, label="CVE-2024-1234 a flaw wf disclosure")
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'class="reports-label"' not in body
+
+
+@sync
+async def test_multi_thread_label_is_shown_without_extension(tmp_path, monkeypatch):
+    quart_app = _build_app(tmp_path, monkeypatch, label="aaa-non-fwd")
+    _login(monkeypatch)
+    response = await quart_app.test_client().get("/project/cassandra")
+    body = await response.get_data(as_text=True)
+
+    assert '<div class="reports-label" title="aaa-non-fwd">aaa-non-fwd</div>' in body
+    # the triage tag is left untouched, as the notification API knows it
+    assert 'name="tag" value="aaa-non-fwd.json"' in body
+
+
+@sync
 async def test_triage_control_sits_in_the_report_row(quart_app, monkeypatch):
     _login(monkeypatch)
     response = await quart_app.test_client().get("/project/cassandra")

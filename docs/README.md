@@ -87,6 +87,12 @@ Free-form text describing the issue is wrapped in optional tokens:
 All of this follows the default process for handling a possible vulnerability,
 [documented for committers](https://www.apache.org/security/committers.html#possible).
 
+Without `.json`, the file name is the label the security team gives the case.
+Until the case has a CVE ID,
+the project page shows part of this label below the title of the thread.
+The PMC can use it to refer to the case when writing to the security team,
+and it often appears in the AI summaries of new reports.
+
 #### Standing labels
 
 A file named `aaa-<topic>.json` or `zzz-<topic>.json` is not a case

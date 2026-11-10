@@ -54,11 +54,9 @@ class IssueWindow:
 
 _CVE_PUSHED_SUFFIX = "was pushed to cve.org"
 
-def _cve(path: pathlib.Path) -> str:
-    stem = path.stem
-    if stem.startswith("CVE-"):
-        return stem.split(' ', 1)[0]
-    return None
+def _cve(path: pathlib.Path) -> str | None:
+    cves = reports.CaseName.parse(path.stem).cves
+    return cves[0] if cves else None
 
 def _issue_window(old_cve_close_dates: dict[str, datetime], path: pathlib.Path, closed: bool) -> IssueWindow | None:
     """Extract the open/close dates from a thread JSON, or None if unusable.
