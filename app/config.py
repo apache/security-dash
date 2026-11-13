@@ -56,6 +56,9 @@ class AppConfig(pydantic.BaseModel):
     pmcs_using_github: dict[str, str] = {}
     """PMCs that track security issues in (private) GitHub issues"""
 
+    pmcs_using_bz: dict[str, str] = {}
+    """PMCs that track security issues in Bugzilla, mapped to their Bugzilla product name"""
+
     pmcs_with_subprojects: list[str] = []
     """PMCs whose reports are split across subprojects."""
 

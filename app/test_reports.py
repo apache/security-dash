@@ -56,14 +56,35 @@ def test_subproject_none_when_no_prefix(tmp_path, monkeypatch):
     assert report.subproject is None
 
 
-def _full_config(tmp_path, pmcs_in_attic=()):
+def _full_config(tmp_path, pmcs_in_attic=(), pmcs_using_bz=None):
     return types.SimpleNamespace(
         data_dir_path=tmp_path,
         pmcs_in_attic=list(pmcs_in_attic),
         pmcs_using_jira={},
         pmcs_using_github={},
+        pmcs_using_bz=pmcs_using_bz or {},
         pmcs_with_security_emails=["cassandra"]
     )
+
+
+def test_bugzilla_issue_link(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get",
+        lambda: _full_config(tmp_path, pmcs_using_bz={"cassandra": "Cassandra"}),
+    )
+    path = _write_report(tmp_path, "2024-03-01 12345 a flaw wf untriaged")
+    report = load_pmc_report("cassandra", path)
+    assert report.bz == (
+        "#12345",
+        "https://bz.apache.org/Cassandra/show_bug.cgi?id=12345",
+    )
+
+
+def test_bugzilla_issue_link_needs_configuration(tmp_path, monkeypatch):
+    monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
+    path = _write_report(tmp_path, "2024-03-01 12345 a flaw wf untriaged")
+    report = load_pmc_report("cassandra", path)
+    assert report.bz is None
 
 
 def test_security_pmc_includes_attic_reports(tmp_path, monkeypatch):

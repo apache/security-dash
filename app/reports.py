@@ -87,6 +87,8 @@ class Report:
     """If this project tracks security issues in private GitHub issues, the GitHub issue link (title and url)"""
     jira: str
     """If this project tracks security issues in private jira issues, the Jira ID"""
+    bz: (str, str)
+    """If this project tracks security issues in Bugzilla, the issue link (title and url)"""
     title: str
     message_id: str
     """message_id of the first email in the thread."""
@@ -235,6 +237,13 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
                 github = (f"#{issue_nr}", f"https://github.com/{config.get().pmcs_using_github[pmc]}/issues/{issue_nr}")
                 break
 
+    bz = None
+    if pmc in config.get().pmcs_using_bz:
+        m = re.match(r"\S+ (\d+) .*", name)
+        if m:
+            issue_nr = m.group(1)
+            bz = (f"#{issue_nr}", f"https://bz.apache.org/{config.get().pmcs_using_bz[pmc]}/show_bug.cgi?id={issue_nr}")
+
     if cves:
         state = "confirmed"
     else:
@@ -271,6 +280,7 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
         cves,
         github,
         jira,
+        bz,
         title,
         first_email['message_id'],
         listid,
@@ -306,6 +316,7 @@ def _label_report(pmc: str, name: str, cves: list[str], email, state: str) -> Re
     return Report(
         name,
         cves,
+        None,
         None,
         None,
         _title(email),

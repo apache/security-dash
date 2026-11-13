@@ -27,6 +27,9 @@
           {%- if report.jira -%}
             <a href="https://issues.apache.org/jira/browse/{{report.jira}}">#{{ report.jira.split('-')[-1] }}</a>
           {%- endif -%}
+          {%- if report.bz -%}
+            <a href="{{report.bz[1]}}">{{ report.bz[0] }}</a>
+          {%- endif -%}
         </td>
         <td class="reports-cves">
           {%- for cve in report.cves -%}

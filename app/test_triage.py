@@ -32,6 +32,7 @@ def _report(message_id="<abc@cassandra.apache.org>", state="untriaged"):
         cves=[],
         github=None,
         jira=None,
+        bz=None,
         title="a flaw",
         message_id=message_id,
         listid="security.cassandra.apache.org",
