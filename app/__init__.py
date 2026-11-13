@@ -269,7 +269,14 @@ async def _triage_payload() -> dict[str, object]:
 @CLIENT.route("/api/project/<project>/triage", methods=["POST"])
 async def project_triage_api(project: str):
     """Take a triage decision on one report, from the project view or as an API call."""
-    user = await _require_authorization_for(project)
+    try:
+        user = await _require_authorization_for(project)
+    except asfquart.auth.AuthenticationFailed as e:
+        if _wants_json():
+            message = str(e)
+            status = 401 if "logged in" in message.lower() else e.errorcode
+            return quart.jsonify({"status": "error", "message": message}), status
+        raise
     _require_same_origin()
 
     try:
@@ -295,9 +302,15 @@ async def project_triage_api(project: str):
     )
 
 async def _triage_response(project: str, message: str, category: str, status: int, **details: Any):
-    if _wants_json():
-        return quart.jsonify({"status": category, "message": message, **details}), status
-    await quart.flash(message, category)
+    wants_json = _wants_json()
+    # JSON callers follow the redirect, so a success has to survive it; errors
+    # are shown in the form and must not linger into the next page load.
+    if category == "success" or not wants_json:
+        await quart.flash(message, category)
+    if wants_json:
+        return quart.jsonify(
+            {"status": category, "message": message, "redirect": _triage_view(project), **details}
+        ), status
     return quart.redirect(_triage_view(project), code=303)
 
 def _triage_view(project: str) -> str:
