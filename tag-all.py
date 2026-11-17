@@ -203,6 +203,9 @@ def parseinbox(verbose, dryrun):
                 "bypass" not in subject.lower() and
                 "fix is incomplete" not in subject.lower() and
                 "follow-up to cve" not in subject.lower() and
+                "variant of cve" not in subject.lower() and
+                "variant on cve" not in subject.lower() and
+                "sibling of cve" not in subject.lower() and
                 not re.search(r"incomplete cve-\d+-\d+ fix", subject.lower())
                 ):
                 for match in re.finditer(r"(CVE-\d+-\d+)", subject):
