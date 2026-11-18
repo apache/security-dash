@@ -410,7 +410,7 @@ def _load_reports_dir(pmc: str) -> list[Report]:
     return result
 
 async def load_pmc_reports(pmc: str) -> list[Report]:
-    if not re.fullmatch(r"[a-z0-9]+", pmc):
+    if not re.fullmatch(r"[-a-z0-9]+", pmc):
         raise ValueError(f"invalid PMC name: {pmc!r}")
 
     result = _load_reports_dir(pmc)
