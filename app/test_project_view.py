@@ -19,7 +19,9 @@
 
 import asfquart
 import asyncio
+import base64
 import functools
+import hashlib
 import html
 import json
 import pytest
@@ -150,7 +152,39 @@ async def test_triage_control_sits_in_the_report_row(quart_app, monkeypatch):
 
     assert '<td class="reports-triage">' in table
     # one row per report: the form is a cell of it, not a row of its own
-    assert table.count("<tr>") == 1
+    assert table.count("<tr") == 1
+
+
+@sync
+async def test_report_row_has_a_stable_anchor(quart_app, monkeypatch):
+    """Rows can be linked to, and the link keeps working across reloads."""
+    _login(monkeypatch)
+    client = quart_app.test_client()
+    first = await (await client.get("/project/cassandra")).get_data(as_text=True)
+    second = await (await client.get("/project/cassandra")).get_data(as_text=True)
+
+    anchor = re.search(r'<tr id="(AS-[A-Z2-7]{4}-[A-Z2-7]{4}-[A-Z2-7]{4})">', first)
+    assert anchor, first
+    assert anchor.group(0) in second
+    assert re.search(
+        rf'<td class="reports-date"><a href="#{anchor.group(1)}"'
+        rf' title="Link to this report: {anchor.group(1)}">\d{{4}}-\d{{2}}-\d{{2}}</a></td>',
+        first,
+    )
+
+
+@sync
+async def test_report_anchor_is_derived_from_the_message_id(tmp_path, monkeypatch):
+    """The anchor identifies the thread, not the title or the state it is in."""
+    _login(monkeypatch)
+    renamed = _build_app(tmp_path, monkeypatch, label="2024-03-05 a reworded flaw")
+    body = await (await renamed.test_client().get("/project/cassandra")).get_data(as_text=True)
+
+    anchor = re.search(r'<tr id="(AS-[A-Z2-7]{4}-[A-Z2-7]{4}-[A-Z2-7]{4})">', body)
+    assert anchor
+    expected = base64.b32encode(hashlib.sha256(MESSAGE_ID.encode()).digest()).decode()
+    expected = "-".join(expected.rstrip("=")[:12][i:i + 4] for i in range(0, 12, 4))
+    assert anchor.group(1) == f"AS-{expected}"
 
 
 @sync

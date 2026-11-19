@@ -16,6 +16,7 @@
 # under the License.
 
 from app import config
+import base64
 import dataclasses
 import datetime
 from email.header import decode_header
@@ -111,6 +112,16 @@ class Report:
     @property
     def date(self) -> datetime.date:
         return self.timestamp.date()
+
+    @property
+    def anchor(self) -> str:
+        """Stable, URL-safe id this report can be linked to.
+
+        Derived from the message id of the thread, so it stays the same across
+        reloads and changes of title, state or date."""
+        digest = base64.b32encode(hashlib.sha256(self.message_id.encode()).digest()).decode()
+        code = digest.rstrip("=")[:12]
+        return "AS-" + "-".join(code[i:i + 4] for i in range(0, 12, 4))
 
     @property
     def sanitized_title(self) -> str:

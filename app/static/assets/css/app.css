@@ -145,6 +145,10 @@ footer p {
   vertical-align: middle;
 }
 
+.reports-table tr:target td {
+  background-color: #fff8c4;
+}
+
 .reports-date,
 .reports-subproject,
 .reports-jira,
