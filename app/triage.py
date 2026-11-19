@@ -55,8 +55,9 @@ _DECISION_PARAGRAPHS: dict[TriageAction, str] = {
     TriageAction.ACCEPT: (
         "The PMC has confirmed the issue you reported as a vulnerability and is "
         "working on a fix. "
-        "You will be notified once a release containing the fix is available, "
-        "and are asked to keep the report confidential until then."
+        "We will publish an advisory after a version fixing the issue is released. "
+        "Unless otherwise specified we will credit you as '{reporter}'. "
+        "We ask you to keep the report confidential until then."
     ),
     TriageAction.REJECT: (
         "The PMC has determined that the issue you reported is NOT a vulnerability "
@@ -65,8 +66,8 @@ _DECISION_PARAGRAPHS: dict[TriageAction, str] = {
     TriageAction.DUPLICATE: (
         "The PMC has confirmed the issue you reported as a vulnerability, a duplicate "
         "of an already-tracked report ({duplicate_of}), and is working on a fix. "
-        "You will be notified once a release containing the fix is available, "
-        "and are asked to keep the report confidential until then."
+        "We will publish an advisory after a version fixing the issue is released. "
+        "We ask you to keep the report confidential until then."
     ),
 }
 _CLOSING_GREETING = "Kind regards,"
@@ -125,6 +126,7 @@ def message_preview(
     decisions = {
         action.value: paragraph.format(
             project=_display_project(project),
+            reporter=report.reporter.display_name if report.reporter else "reporter",
             duplicate_of=duplicate_of or "another report",
         )
         for action, paragraph in _DECISION_PARAGRAPHS.items()
