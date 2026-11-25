@@ -108,7 +108,7 @@ def list_pmcs() -> list[str]:
         if (
             p.is_dir()
             and p.name not in _NON_PROJECT_DIRS
-            and re.fullmatch(r"[a-z0-9]+", p.name)
+            and re.fullmatch(r"[-a-z0-9]+", p.name)
         ):
             names.add(p.name)
     for tree in _CLOSED_TREES:
