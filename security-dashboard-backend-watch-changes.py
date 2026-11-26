@@ -11,6 +11,7 @@ from googleapiclient.errors import HttpError
 from gmail_gcloud import gmail_service, history, messages_by_label
 from gmail_gcloud_subscriber import gmail_subscribe
 from gmail_label_cache import refresh_label_cache, get_label_by_name, get_label_by_id, get_labels_by_prefix, validate_label_name, delete_label_file
+from target_lock import target_lock
 import threading
 from optparse import OptionParser
 import os
@@ -101,10 +102,12 @@ def refresh_thread(label):
     # call per message and can fail partway (rate limit), which would otherwise
     # leave a truncated .json behind for consumers to read.
     msgs = messages(label)
-    path = f"{options.target}/{label['name']}.json"
-    with open(path + ".tmp", "w") as f:
-        json.dump(msgs, f, indent=2)
-    os.replace(path + ".tmp", path)
+
+    with target_lock(options.target):
+        path = f"{options.target}/{label['name']}.json"
+        with open(path + ".tmp", "w") as f:
+            json.dump(msgs, f, indent=2)
+        os.replace(path + ".tmp", path)
 
 # labelId -> {"name": ..., "history_id": ...}, meaning: the on-disk JSON for
 # this label reflects the mailbox at least as of history_id. Lets a retry of a
@@ -197,45 +200,47 @@ def subscription_callback(message):
         message.ack()
 
 if options.single:
-    # Refreshing a single label:
-    refresh_label_cache(options.target)
-    label = get_label_by_name(options.single)
-    if label:
-        print(f"Refreshing {label}")
-        refresh_thread(label)
-    else:
-        if delete_label_file(options.target, options.single):
-            print(f"Label {options.single} no longer found upstream, deleted")
+    with target_lock(options.target):
+        # Refreshing a single label:
+        refresh_label_cache(options.target, "watch-changes")
+        label = get_label_by_name(options.single)
+        if label:
+            print(f"Refreshing {label}")
+            refresh_thread(label)
         else:
-            print(f"Label {options.single} not found")
+            if delete_label_file(options.target, options.single):
+                print(f"Label {options.single} no longer found upstream, deleted")
+            else:
+                print(f"Label {options.single} not found")
 
 elif options.project:
-    refresh_label_cache(options.target)
-    prefix = options.project.rstrip("/")
-    prefix_labels = get_labels_by_prefix(options.project)
-    upstream_names = {l['name'] for l in prefix_labels}
+    with target_lock(options.target):
+        refresh_label_cache(options.target, "watch-changes")
+        prefix = options.project.rstrip("/")
+        prefix_labels = get_labels_by_prefix(options.project)
+        upstream_names = {l['name'] for l in prefix_labels}
 
-    # Remove thread files on disk under this project that no longer
-    # correspond to an upstream label (deleted or renamed away). Only
-    # the project's own directory (and its own label file) is scanned.
-    project_dir = os.path.join(options.target, prefix)
-    on_disk = []
-    if os.path.isfile(project_dir + ".json"):
-        on_disk.append(prefix)
-    for root, dirs, files in os.walk(project_dir):
-        for fn in files:
-            if fn.endswith(".json"):
-                on_disk.append(os.path.relpath(os.path.join(root, fn), options.target)[:-len(".json")])
-    for name in on_disk:
-        if name not in upstream_names:
-            print(f"Thread '{name}' no longer in upstream list, removing")
-            delete_label_file(options.target, name)
+        # Remove thread files on disk under this project that no longer
+        # correspond to an upstream label (deleted or renamed away). Only
+        # the project's own directory (and its own label file) is scanned.
+        project_dir = os.path.join(options.target, prefix)
+        on_disk = []
+        if os.path.isfile(project_dir + ".json"):
+            on_disk.append(prefix)
+        for root, dirs, files in os.walk(project_dir):
+            for fn in files:
+                if fn.endswith(".json"):
+                    on_disk.append(os.path.relpath(os.path.join(root, fn), options.target)[:-len(".json")])
+        for name in on_disk:
+            if name not in upstream_names:
+                print(f"Thread '{name}' no longer in upstream list, removing")
+                delete_label_file(options.target, name)
 
-    project_labels = [l for l in prefix_labels if is_thread_label(l['name'])]
-    print(f"Refreshing {len(project_labels)} labels under {options.project}")
-    for n, label in enumerate(project_labels, 1):
-        print(f"Refreshing {label['name']} ({n}/{len(project_labels)})")
-        refresh_thread(label)
+        project_labels = [l for l in prefix_labels if is_thread_label(l['name'])]
+        print(f"Refreshing {len(project_labels)} labels under {options.project}")
+        for n, label in enumerate(project_labels, 1):
+            print(f"Refreshing {label['name']} ({n}/{len(project_labels)})")
+            refresh_thread(label)
 
 else:
     print("Subscribing")

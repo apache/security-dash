@@ -43,22 +43,23 @@ def delete_label_file(target_dir, name):
         os.remove(path)
     return True
 
-_CACHE_FILENAME = "gmail_label_cache.json"
 _loaded = False
 labels = {}
 
-def _cache_path(target_dir):
-    return os.path.join(target_dir, _CACHE_FILENAME)
+def _cache_path(target_dir, tool):
+    if not tool or "/" in tool or tool.startswith("."):
+        raise ValueError(f"invalid cache tool name {tool!r}")
+    return os.path.join(target_dir, f"gmail_label_cache-{tool}.json")
 
-def _load_labels(target_dir):
+def _load_labels(target_dir, tool):
     try:
-        with open(_cache_path(target_dir)) as f:
+        with open(_cache_path(target_dir, tool)) as f:
             labels.update(json.load(f))
     except FileNotFoundError:
         pass
 
-def _save_labels(target_dir):
-    path = _cache_path(target_dir)
+def _save_labels(target_dir, tool):
+    path = _cache_path(target_dir, tool)
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
         json.dump(labels, f, indent=2, sort_keys=True)
@@ -68,10 +69,10 @@ def _save_labels(target_dir):
 # Each change is a dict with 'id' and 'old_name'. A rename
 # also has the new 'name'; a deletion (the label disappeared
 # upstream) has 'name' set to None.
-def refresh_label_cache(target_dir):
+def refresh_label_cache(target_dir, tool):
     global _loaded
     if not _loaded:
-        _load_labels(target_dir)
+        _load_labels(target_dir, tool)
         _loaded = True
 
     old_labels = labels
@@ -104,7 +105,7 @@ def refresh_label_cache(target_dir):
             })
             del labels[labelId]
 
-    _save_labels(target_dir)
+    _save_labels(target_dir, tool)
     return result
 
 def get_label_by_name(name):

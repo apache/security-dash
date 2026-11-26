@@ -3,6 +3,7 @@ load_dotenv()
 
 from gmail_gcloud_subscriber import gmail_subscribe
 from gmail_label_cache import refresh_label_cache, validate_label_name, delete_label_file
+from target_lock import target_lock
 from optparse import OptionParser
 import os
 import threading
@@ -36,14 +37,18 @@ def label_updated(labelId, old, new):
 def poll_label_changes(interval=10):
     while True:
         print("Polling for label changes")
-        for change in refresh_label_cache(options.target):
-            old = change['old_name']
-            new = change['name']
-            if new is None:
-                print(f"Label '{old}' deleted upstream, removing")
-                delete_label_file(options.target, old)
-            elif old != new:
-                label_updated(change['id'], old, new)
+        # Held for the whole iteration: refresh_label_cache rewrites the
+        # cache file, and the renames/deletes touch the label files and
+        # the git index. Released before sleeping so other writers get in.
+        with target_lock(options.target):
+            for change in refresh_label_cache(options.target, "watch-label-renames"):
+                old = change['old_name']
+                new = change['name']
+                if new is None:
+                    print(f"Label '{old}' deleted upstream, removing")
+                    delete_label_file(options.target, old)
+                elif old != new:
+                    label_updated(change['id'], old, new)
         sleep(interval)
 
 thread = threading.Thread(target=poll_label_changes)
