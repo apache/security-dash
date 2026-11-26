@@ -40,7 +40,7 @@ def poll_label_changes(interval=10):
         # Held for the whole iteration: refresh_label_cache rewrites the
         # cache file, and the renames/deletes touch the label files and
         # the git index. Released before sleeping so other writers get in.
-        with target_lock(options.target):
+        with target_lock(options.target, "watch-label-renames"):
             for change in refresh_label_cache(options.target, "watch-label-renames"):
                 old = change['old_name']
                 new = change['name']

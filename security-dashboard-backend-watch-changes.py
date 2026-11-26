@@ -92,7 +92,7 @@ def messages(label):
 
     return result
 
-def refresh_thread(label):
+def refresh_thread(label, holder):
     if not label:
         return;
 
@@ -103,7 +103,7 @@ def refresh_thread(label):
     # leave a truncated .json behind for consumers to read.
     msgs = messages(label)
 
-    with target_lock(options.target):
+    with target_lock(options.target, holder):
         path = f"{options.target}/{label['name']}.json"
         with open(path + ".tmp", "w") as f:
             json.dump(msgs, f, indent=2)
@@ -168,7 +168,7 @@ def update_history_records(records, history_id):
                 print(f"Label {label['name']} already current as of {history_id}")
                 continue
             print(f"Label {label['name']}")
-            refresh_thread(label)
+            refresh_thread(label, "watch-changes")
             # Only after the file is durably in place: dying in between costs
             # one redundant refresh next time, which is the safe direction.
             record_refreshed(label, history_id)
@@ -200,21 +200,26 @@ def subscription_callback(message):
         message.ack()
 
 if options.single:
-    with target_lock(options.target):
-        # Refreshing a single label:
+    # Refreshing a single label. refresh_thread takes the lock itself, so
+    # the lock is not held while fetching messages.
+    holder = f"watch-changes -s {options.single}"
+    with target_lock(options.target, holder):
         refresh_label_cache(options.target, "watch-changes")
-        label = get_label_by_name(options.single)
-        if label:
-            print(f"Refreshing {label}")
-            refresh_thread(label)
+    label = get_label_by_name(options.single)
+    if label:
+        print(f"Refreshing {label}")
+        refresh_thread(label, holder)
+    else:
+        with target_lock(options.target, holder):
+            deleted = delete_label_file(options.target, options.single)
+        if deleted:
+            print(f"Label {options.single} no longer found upstream, deleted")
         else:
-            if delete_label_file(options.target, options.single):
-                print(f"Label {options.single} no longer found upstream, deleted")
-            else:
-                print(f"Label {options.single} not found")
+            print(f"Label {options.single} not found")
 
 elif options.project:
-    with target_lock(options.target):
+    holder = f"watch-changes -p {options.project}"
+    with target_lock(options.target, holder):
         refresh_label_cache(options.target, "watch-changes")
         prefix = options.project.rstrip("/")
         prefix_labels = get_labels_by_prefix(options.project)
@@ -236,11 +241,13 @@ elif options.project:
                 print(f"Thread '{name}' no longer in upstream list, removing")
                 delete_label_file(options.target, name)
 
-        project_labels = [l for l in prefix_labels if is_thread_label(l['name'])]
-        print(f"Refreshing {len(project_labels)} labels under {options.project}")
-        for n, label in enumerate(project_labels, 1):
-            print(f"Refreshing {label['name']} ({n}/{len(project_labels)})")
-            refresh_thread(label)
+    # refresh_thread takes the lock per label, so it is not held while
+    # fetching messages.
+    project_labels = [l for l in prefix_labels if is_thread_label(l['name'])]
+    print(f"Refreshing {len(project_labels)} labels under {options.project}")
+    for n, label in enumerate(project_labels, 1):
+        print(f"Refreshing {label['name']} ({n}/{len(project_labels)})")
+        refresh_thread(label, holder)
 
 else:
     print("Subscribing")
