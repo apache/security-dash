@@ -163,7 +163,7 @@ def _ponymail_link(message_id, listid):
     return f"https://lists.apache.org/thread/{partly_encoded_message_id}?<{listid}>"
 
 def _project_link(pmc, emails):
-    for email in emails[:5]:
+    for email in emails[:6]:
         list_addr = _apache_list_address(pmc, email)
         if list_addr:
             return _ponymail_link(email['message_id'], list_addr.replace('@', '.'))
