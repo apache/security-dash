@@ -34,8 +34,6 @@ _CLOSED_TREES = (
     "archive/zzz-resolved",
     "archive/zzz-non-issue",
 )
-# Top-level entries under the data dir that are not themselves projects.
-_NON_PROJECT_DIRS = {"zzz-resolved", "zzz-non-issue", "archive"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -107,7 +105,9 @@ def list_pmcs() -> list[str]:
     for p in data_dir.iterdir():
         if (
             p.is_dir()
-            and p.name not in _NON_PROJECT_DIRS
+            and not p.name == "archive"
+            and not p.name.startswith("zzz-")
+            and not p.name.startswith("aaa-")
             and re.fullmatch(r"[-a-z0-9]+", p.name)
         ):
             names.add(p.name)
