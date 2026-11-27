@@ -74,17 +74,34 @@ def test_bugzilla_issue_link(tmp_path, monkeypatch):
     )
     path = _write_report(tmp_path, "2024-03-01 12345 a flaw wf untriaged")
     report = load_pmc_report("cassandra", path)
-    assert report.bz == (
+    assert report.bz == [(
         "#12345",
         "https://bz.apache.org/Cassandra/show_bug.cgi?id=12345",
+    )]
+
+
+def test_bugzilla_issue_multilink(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        reports.config, "get",
+        lambda: _full_config(tmp_path, pmcs_using_bz={"cassandra": "Cassandra"}),
     )
+    path = _write_report(tmp_path, "CVE-12345 CVE-4312 12345 54321 a flaw wf untriaged")
+    report = load_pmc_report("cassandra", path)
+    assert report.bz == [(
+        "#12345",
+        "https://bz.apache.org/Cassandra/show_bug.cgi?id=12345",
+    ),
+    (
+        "#54321",
+        "https://bz.apache.org/Cassandra/show_bug.cgi?id=54321",
+    )]
 
 
 def test_bugzilla_issue_link_needs_configuration(tmp_path, monkeypatch):
     monkeypatch.setattr(reports.config, "get", lambda: _full_config(tmp_path))
     path = _write_report(tmp_path, "2024-03-01 12345 a flaw wf untriaged")
     report = load_pmc_report("cassandra", path)
-    assert report.bz is None
+    assert not report.bz
 
 
 def test_security_pmc_includes_attic_reports(tmp_path, monkeypatch):
