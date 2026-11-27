@@ -87,7 +87,7 @@ class Report:
     """If this project tracks security issues in private GitHub issues, the GitHub issue link (title and url)"""
     jira: str
     """If this project tracks security issues in private jira issues, the Jira ID"""
-    bz: (str, str)
+    bz: list[(str, str)]
     """If this project tracks security issues in Bugzilla, the issue link (title and url)"""
     title: str
     message_id: str
@@ -218,7 +218,6 @@ def load_pmc_report(pmc: str, path: pathlib.Path) -> Report | None:
 
     m = re.match(r"(?:CVE-\S+\s+)*CVE-\S+", path.name)
     cves = m.group(0).split() if m else []
-
     return _load_pmc_report(pmc, path.name[:-5], cves, emails)
 
 def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object]) -> Report | None:
@@ -237,12 +236,13 @@ def _load_pmc_report(pmc: str, name: str, cves: list[str], emails: list[object])
                 github = (f"#{issue_nr}", f"https://github.com/{config.get().pmcs_using_github[pmc]}/issues/{issue_nr}")
                 break
 
-    bz = None
+    bz = []
     if pmc in config.get().pmcs_using_bz:
-        m = re.match(r"\S+ (\d+) .*", name)
-        if m:
-            issue_nr = m.group(1)
-            bz = (f"#{issue_nr}", f"https://bz.apache.org/{config.get().pmcs_using_bz[pmc]}/show_bug.cgi?id={issue_nr}")
+        m = re.match(r"\S+ (CVE-\S+ )*((\d+ )*).*", name)
+        if m and m.group(2):
+            issue_nrs = m.group(2).split(' ')[:-1]
+            for issue_nr in issue_nrs:
+                bz.append((f"#{issue_nr}", f"https://bz.apache.org/{config.get().pmcs_using_bz[pmc]}/show_bug.cgi?id={issue_nr}"))
 
     if cves:
         state = "confirmed"
@@ -318,7 +318,7 @@ def _label_report(pmc: str, name: str, cves: list[str], email, state: str) -> Re
         cves,
         None,
         None,
-        None,
+        [],
         _title(email),
         email['message_id'],
         listid,
